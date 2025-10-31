@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ quiz.title }} - Details{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h2>{{ quiz.title }}</h2>
+    <p class="quiz-description">{{ quiz.description }}</p>
+    
+    <div class="quiz-info">
+        <ul>
+            <li><strong>Start Time:</strong> {{ quiz.start_time|date:"M d, Y H:i" }}</li>
+            <li><strong>End Time:</strong> {{ quiz.end_time|date:"M d, Y H:i" }}</li>
+            <li><strong>Duration:</strong> {{ quiz.duration }} minutes</li>
+            <li><strong>Questions:</strong> {{ quiz.questions.count }}</li>
+            <li><strong>Status:</strong> {{ quiz.status|title }}</li>
+        </ul>
+    </div>
+
+    {% if user.is_authenticated %}
+        {% if quiz.is_active %}
+            <a href="{% url 'join_quiz' quiz.pk %}" class="btn btn-success">Join Quiz</a>
+        {% else %}
+            <p class="quiz-inactive">This quiz is not currently active.</p>
+        {% endif %}
+    {% else %}
+        <p>Please <a href="{% url 'login' %}">login</a> to participate in this quiz.</p>
+    {% endif %}
+
+    <a href="{% url 'leaderboard' quiz.pk %}" class="btn btn-secondary">View Leaderboard</a>
+</div>
+{% endblock %}

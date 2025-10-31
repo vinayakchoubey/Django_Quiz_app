@@ -1,0 +1,286 @@
+{% extends 'base.html' %}
+{% load tz %}
+
+{% block title %}{{ quiz.title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+	<div class="quiz-header">
+		<h1>{{ quiz.title }}</h1>
+		<p class="quiz-description">{{ quiz.description }}</p>
+	</div>
+
+	<div class="quiz-info-grid">
+		<div class="info-card">
+			<h3>📅 Schedule</h3>
+			<div class="info-item">
+				<strong>Starts:</strong> 
+				{{ quiz.start_time|timezone:"Asia/Kolkata"|date:"M d, Y H:i" }}
+			</div>
+			<div class="info-item">
+				<strong>Ends:</strong> 
+				{{ quiz.end_time|timezone:"Asia/Kolkata"|date:"M d, Y H:i" }}
+			</div>
+			<div class="info-item">
+				<strong>Duration:</strong> {{ quiz.duration }} minutes
+			</div>
+			<div class="info-item">
+				<strong>Mode:</strong> {{ quiz.mode|title }}
+			</div>
+		</div>
+
+		<div class="info-card">
+			<h3>📊 Quiz Details</h3>
+			<div class="info-item">
+				<strong>Questions:</strong> {{ quiz.get_question_count }}
+			</div>
+			<div class="info-item">
+				<strong>Total Marks:</strong> {{ quiz.total_marks }}
+			</div>
+			<div class="info-item">
+				<strong>Status:</strong> 
+				<span class="status-badge {{ quiz.status }}">{{ quiz.status|title }}</span>
+			</div>
+		</div>
+
+		<div class="info-card">
+			<h3>🎯 Your Status</h3>
+			{% if entry.started_at %}
+				{% if entry.finished_at %}
+				<div class="info-item">
+					<strong>Status:</strong> <span class="status-badge completed">Completed</span>
+				</div>
+				<div class="info-item">
+					<strong>Score:</strong> {{ entry.score }}/{{ quiz.total_marks }}
+				</div>
+				{% else %}
+				<div class="info-item">
+					<strong>Status:</strong> <span class="status-badge ongoing">In Progress</span>
+				</div>
+				<div class="info-item">
+					<strong>Started:</strong> {{ entry.started_at|timesince }} ago
+				</div>
+				{% endif %}
+			{% else %}
+				<div class="info-item">
+					<strong>Status:</strong> <span class="status-badge scheduled">Not Started</span>
+				</div>
+			{% endif %}
+		</div>
+	</div>
+
+	{% if request.user.is_authenticated and request.user.is_staff %}
+	<div style="margin-bottom: 16px; text-align:right;">
+		<form method="post" action="{% url 'delete_quiz' quiz.pk %}" onsubmit="return confirm('Delete this quiz? This cannot be undone.');" style="display:inline-block;">
+			{% csrf_token %}
+			<button type="submit" class="btn btn-danger">🗑️ Delete Quiz</button>
+		</form>
+	</div>
+	{% endif %}
+
+	{% if quiz.access_token and not has_access %}
+	<div class="quiz-actions">
+		<h4>🔐 This quiz requires an access token</h4>
+		<form method="post">
+			{% csrf_token %}
+			<input type="text" name="access_token" placeholder="Enter access token" class="form-control" required />
+			<button type="submit" class="btn btn-primary btn-lg" style="margin-top: 10px;">Unlock Quiz</button>
+		</form>
+		<div class="secondary-actions">
+			<a href="{% url 'home' %}" class="btn btn-outline-secondary">🏠 Back to Quizzes</a>
+		</div>
+	</div>
+	{% else %}
+	<div class="quiz-actions">
+		{% if quiz.is_active %}
+			{% if entry.started_at and not entry.finished_at %}
+				<a href="{% url 'start_quiz' quiz.pk %}" class="btn btn-primary btn-lg">
+					➡️ Continue Quiz
+				</a>
+			{% elif entry.finished_at %}
+				<a href="{% url 'finish_quiz' quiz.pk %}" class="btn btn-success btn-lg">
+					📊 View Results
+				</a>
+			{% else %}
+				<a href="{% url 'start_quiz' quiz.pk %}" class="btn btn-primary btn-lg">
+					🚀 Start Quiz
+				</a>
+			{% endif %}
+		{% else %}
+			<button class="btn btn-secondary btn-lg" disabled>
+				⏰ Quiz Not Active
+			</button>
+			<p class="text-muted mt-2">
+				{% if current_time < quiz.start_time %}
+					Starts {{ quiz.start_time|timeuntil }} from now
+				{% else %}
+					This quiz has ended
+				{% endif %}
+			</p>
+		{% endif %}
+
+		<div class="secondary-actions">
+			<a href="{% url 'leaderboard' quiz.pk %}" class="btn btn-outline-primary">
+				📈 Leaderboard
+			</a>
+			<a href="{% url 'home' %}" class="btn btn-outline-secondary">
+				🏠 Back to Quizzes
+			</a>
+		</div>
+	</div>
+	{% endif %}
+
+	{% if entry.finished_at %}
+	<div class="results-preview">
+		<h3>Your Performance</h3>
+		<div class="performance-stats">
+			<div class="stat">
+				<span class="stat-value">{{ entry.score|floatformat:1 }}</span>
+				<span class="stat-label">Score</span>
+			</div>
+			<div class="stat">
+				<span class="stat-value">{{ entry.get_correct_answers_count }}</span>
+				<span class="stat-label">Correct</span>
+			</div>
+			<div class="stat">
+				<span class="stat-value">{{ entry.time_taken|floatformat:0 }}s</span>
+				<span class="stat-label">Time Taken</span>
+			</div>
+			<div class="stat">
+				<span class="stat-value">{{ entry.get_percentage_score|floatformat:1 }}%</span>
+				<span class="stat-label">Percentage</span>
+			</div>
+		</div>
+	</div>
+	{% endif %}
+</div>
+
+<style>
+.quiz-header {
+	text-align: center;
+	margin-bottom: 3rem;
+	color: #efe3e3ff;
+	
+}
+
+.quiz-description {
+	font-size: 1.2rem;
+	color: #efe3e3ff;
+	max-width: 800px;
+	margin: 0 auto;
+}
+
+.quiz-info-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+	gap: 2rem;
+	margin-bottom: 3rem;
+}
+
+.info-card {
+	background: white;
+	padding: 1.5rem;
+	border-radius: 10px;
+	box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.info-card h3 {
+	margin-top: 0;
+	margin-bottom: 1rem;
+	color: #2c3e50;
+}
+
+.info-item {
+	padding: 0.5rem 0;
+	border-bottom: 1px solid #eee;
+	display: flex;
+	justify-content: space-between;
+}
+
+.info-item:last-child {
+	border-bottom: none;
+}
+
+.status-badge {
+	padding: 0.3rem 0.8rem;
+	border-radius: 20px;
+	font-size: 0.8rem;
+	font-weight: bold;
+	text-transform: uppercase;
+}
+
+.status-badge.scheduled { background: #fff3cd; color: #856404; }
+.status-badge.ongoing { background: #d1ecf1; color: #0c5460; }
+.status-badge.completed { background: #d4edda; color: #155724; }
+
+.quiz-actions {
+	text-align: center;
+	margin-bottom: 3rem;
+	padding: 2rem;
+	background: white;
+	border-radius: 10px;
+	box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.btn-lg {
+	padding: 1rem 2rem;
+	font-size: 1.2rem;
+	margin-bottom: 1rem;
+}
+
+.secondary-actions {
+	display: flex;
+	gap: 1rem;
+	justify-content: center;
+	flex-wrap: wrap;
+	margin-top: 1.5rem;
+}
+
+.performance-stats {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+	gap: 1rem;
+	margin-top: 1rem;
+}
+
+.stat {
+	background: white;
+	padding: 1.5rem;
+	border-radius: 10px;
+	text-align: center;
+	box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.stat-value {
+	display: block;
+	font-size: 2rem;
+	font-weight: bold;
+	color: #d85d0bff;
+}
+
+.stat-label {
+	font-size: 0.9rem;
+	color: #0b0b0bff;
+	text-transform: uppercase;
+}
+
+@media (max-width: 768px) {
+	.quiz-info-grid {
+		grid-template-columns: 1fr;
+	}
+	
+	.secondary-actions {
+		flex-direction: column;
+	}
+	
+	.secondary-actions .btn {
+		width: 100%;
+	}
+	
+	.info-item {
+		flex-direction: column;
+		gap: 0.3rem;
+	}
+}
+</style>
+{% endblock %}

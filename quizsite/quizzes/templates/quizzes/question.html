@@ -1,0 +1,582 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ quiz.title }} - Question {{ question.order }}{% endblock %}
+
+{% block content %}
+<div class="container">
+	<div class="quiz-header">
+		<h2>{{ quiz.title }}</h2>
+		<div class="quiz-progress">
+			Question {{ question.order }} of {{ quiz.questions.count }}
+			{% if question.order == quiz.questions.count %}
+			<span class="final-question-badge">Final Question!</span>
+			{% endif %}
+		</div>
+	</div>
+
+	<!-- Countdown timer display -->
+	<div class="timer-banner" id="timerBanner">
+		⏳ Time Remaining: <span id="countdown">--:--</span>
+	</div>
+	<div id="toast" class="timer-toast" style="display:none;">⚠️ 5 minutes left. Please finalize your answers.</div>
+
+	<div class="question-card">
+		<h3>Question {{ question.order }}</h3>
+		<p class="question-text">{{ question.text }}</p>
+
+		{% if question.qtype == 'mcq' %}
+			{% if question.options.all %}
+			<form method="POST" class="options-form" id="quiz-form">
+				{% csrf_token %}
+				<div class="options-list">
+					{% for option in question.options.all %}
+					<label class="option-label">
+						<input type="radio" name="option" value="{{ option.id }}" required>
+						<span class="option-text">{{ option.text }}</span>
+					</label>
+					{% endfor %}
+				</div>
+				
+				<div class="navigation-buttons">
+					{% if question.order > 1 %}
+					<a href="{% url 'quiz_question' quiz.pk question.order|add:'-1' %}" class="btn btn-secondary">← Previous</a>
+					{% else %}
+					<div></div> <!-- Empty div for spacing -->
+					{% endif %}
+					
+					{% if question.order == quiz.questions.count %}
+					<button type="submit" class="btn btn-success submit-quiz-btn">
+						🏁 Submit Quiz
+					</button>
+					{% else %}
+					<button type="submit" class="btn btn-primary next-question-btn">
+						Next Question →
+					</button>
+					{% endif %}
+					<button type="submit" name="submit_quiz" value="1" class="btn btn-outline-success" onclick="return confirm('Submit the quiz now?');">
+						Submit Now
+					</button>
+				</div>
+			</form>
+			{% else %}
+			<div class="no-options">
+				<p>⚠️ No options available for this question.</p>
+				<p>Please contact the quiz administrator.</p>
+			</div>
+			{% endif %}
+		{% else %}
+			<div class="text-question">
+				<p>This is a text-based question. Please write your answer below.</p>
+				<form method="POST" id="quiz-form-text">
+					{% csrf_token %}
+					<div class="form-group">
+						<textarea name="text_answer" rows="5" placeholder="Type your answer here..." required></textarea>
+					</div>
+					<div class="navigation-buttons">
+						{% if question.order > 1 %}
+						<a href="{% url 'quiz_question' quiz.pk question.order|add:'-1' %}" class="btn btn-secondary">← Previous</a>
+						{% else %}
+						<div></div> <!-- Empty div for spacing -->
+						{% endif %}
+						
+						{% if question.order == quiz.questions.count %}
+						<button type="submit" class="btn btn-success submit-quiz-btn">
+							🏁 Submit Quiz
+						</button>
+						{% else %}
+						<button type="submit" class="btn btn-primary next-question-btn">
+							Next Question →
+						</button>
+						{% endif %}
+						<button type="submit" name="submit_quiz" value="1" class="btn btn-outline-success" onclick="return confirm('Submit the quiz now?');">
+							Submit Now
+						</button>
+					</div>
+				</form>
+			</div>
+		{% endif %}
+	</div>
+
+	<!-- Finish Now button when all answered -->
+	{% if answered_count >= total_questions %}
+	<div style="text-align:center; margin-bottom: 16px;">
+		<form method="post" onsubmit="return confirm('Submit the quiz now?');" style="display:inline-block;">
+			{% csrf_token %}
+			<input type="hidden" name="finish_now" value="1" />
+			<button type="submit" class="btn btn-success" style="padding:0.8rem 1.5rem; font-weight:700;">🏁 Finish Now</button>
+		</form>
+	</div>
+	{% endif %}
+
+	<!-- Progress indicator -->
+	<div class="progress-container">
+		<div class="progress-bar">
+			<div class="progress-fill" style="width: {% widthratio question.order quiz.questions.count 100 %}%"></div>
+		</div>
+		<div class="progress-text">
+			Progress: {{ question.order }} of {{ quiz.questions.count }} questions ({% widthratio question.order quiz.questions.count 100 %}%)
+			{% if question.order == quiz.questions.count %}
+			<span class="completion-message">🎉 Almost done! This is your final question.</span>
+			{% endif %}
+		</div>
+	</div>
+
+	<!-- Question Navigation Quick Links -->
+	<div class="question-navigation">
+		<h4>Jump to Question:</h4>
+		<div class="question-links">
+			{% for q in quiz.questions.all %}
+			<a href="{% url 'quiz_question' quiz.pk q.order %}" 
+			   class="question-link {% if q.order == question.order %}current{% endif %}">
+				{{ q.order }}
+			</a>
+			{% endfor %}
+		</div>
+	</div>
+
+	<!-- Final Quiz Submission Warning (only on last question) -->
+	{% if question.order == quiz.questions.count %}
+	<div class="submission-warning">
+		<div class="warning-icon">⚠️</div>
+		<div class="warning-content">
+			<h4>Final Submission</h4>
+			<p>This is the last question. After submitting, you won't be able to change your answers.</p>
+			<ul>
+				<li>✅ All your answers will be saved</li>
+				<li>✅ Your score will be calculated immediately</li>
+				<li>✅ You'll see the leaderboard after submission</li>
+			</ul>
+		</div>
+	</div>
+	{% endif %}
+</div>
+
+<!-- Bell Sound (5-minute warning) -->
+<audio id="bellSound">
+	<source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABYAZGF0YQAAAAAA" type="audio/wav">
+</audio>
+
+<!-- Submitting overlay -->
+<div id="submittingOverlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:1100; align-items:center; justify-content:center;">
+	<div style="background:#fff; padding:20px 24px; border-radius:10px; text-align:center; width:90%; max-width:360px;">
+		<div style="font-weight:700; margin-bottom:8px;">⏳ Submitting your answer...</div>
+		<div>Please wait a moment</div>
+	</div>
+</div>
+
+<style>
+.quiz-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+.quiz-progress {
+    background: #3498db;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.final-question-badge {
+    background: #e74c3c;
+    color: white;
+    padding: 0.2rem 0.6rem;
+    border-radius: 10px;
+    font-size: 0.8rem;
+    font-weight: bold;
+}
+
+.question-card {
+    background: white;
+    padding: 2rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+.question-text {
+    font-size: 1.2rem;
+    line-height: 1.6;
+    color: #2c3e50;
+    margin-bottom: 2rem;
+    font-weight: 500;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #3498db;
+}
+
+/* Options Styling */
+.options-list {
+    margin: 2rem 0;
+}
+
+.option-label {
+    display: flex;
+    align-items: center;
+    padding: 1.2rem 1.5rem;
+    margin: 1rem 0;
+    border: 2px solid #e1e8ed;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    background: white;
+    position: relative;
+}
+
+.option-label:hover {
+    border-color: #3498db;
+    background: #f8fafc;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(52, 152, 219, 0.2);
+}
+
+.option-label input[type="radio"] {
+    margin-right: 1.2rem;
+    transform: scale(1.3);
+    accent-color: #3498db;
+}
+
+.option-label input[type="radio"]:checked {
+    accent-color: #27ae60;
+}
+
+.option-text {
+    font-size: 1.1rem;
+    flex-grow: 1;
+    color: #2c3e50;
+}
+
+/* Navigation Buttons */
+.navigation-buttons {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid #e1e8ed;
+}
+
+.navigation-buttons .btn {
+    padding: 0.8rem 1.5rem;
+    font-size: 1rem;
+    font-weight: 500;
+    min-width: 150px;
+}
+
+/* Next Question Button */
+.next-question-btn {
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    border: none;
+    transition: all 0.3s ease;
+}
+
+.next-question-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(52, 152, 219, 0.4);
+}
+
+/* Submit Quiz Button */
+.submit-quiz-btn {
+    background: linear-gradient(135deg, #27ae60, #2ecc71);
+    border: none;
+    font-size: 1.1rem;
+    font-weight: 600;
+    padding: 1rem 2rem;
+    transition: all 0.3s ease;
+}
+
+.submit-quiz-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+    background: linear-gradient(135deg, #2ecc71, #27ae60);
+}
+
+/* Progress Bar */
+.progress-container {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    margin-bottom: 2rem;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 10px;
+    background: #ecf0f1;
+    border-radius: 5px;
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+}
+
+.progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #27ae60, #2ecc71);
+    border-radius: 5px;
+    transition: width 0.5s ease;
+}
+
+.progress-text {
+    text-align: center;
+    color: #7f8c8d;
+    font-weight: 500;
+}
+
+.completion-message {
+    color: #27ae60;
+    font-weight: bold;
+    display: block;
+    margin-top: 0.5rem;
+}
+
+/* Submission Warning */
+.submission-warning {
+    background: #fff3cd;
+    border: 2px solid #ffeaa7;
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin: 2rem 0;
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+}
+
+.warning-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+}
+
+.warning-content h4 {
+    color: #856404;
+    margin-bottom: 0.5rem;
+}
+
+.warning-content p {
+    color: #856404;
+    margin-bottom: 1rem;
+}
+
+.warning-content ul {
+    color: #856404;
+    margin: 0;
+    padding-left: 1.5rem;
+}
+
+.warning-content li {
+    margin-bottom: 0.3rem;
+}
+
+/* Text Question Styling */
+.text-question {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 8px;
+    margin: 1rem 0;
+}
+
+.form-group textarea {
+    width: 100%;
+    padding: 1rem;
+    border: 2px solid #e1e8ed;
+    border-radius: 8px;
+    font-size: 1rem;
+    resize: vertical;
+    min-height: 120px;
+    font-family: inherit;
+}
+
+.form-group textarea:focus {
+    outline: none;
+    border-color: #3498db;
+    box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+}
+
+/* No Options Warning */
+.no-options {
+    background: #fff3cd;
+    border: 2px solid #ffeaa7;
+    padding: 2rem;
+    border-radius: 10px;
+    text-align: center;
+    margin: 2rem 0;
+}
+
+.no-options p {
+    margin: 0.5rem 0;
+    color: #856404;
+    font-size: 1.1rem;
+}
+
+/* Question Navigation */
+.question-navigation {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.question-navigation h4 {
+    margin-bottom: 1rem;
+    color: #2c3e50;
+    text-align: center;
+}
+
+.question-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: center;
+}
+
+.question-link {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background: #ecf0f1;
+    color: #2c3e50;
+    text-decoration: none;
+    border-radius: 5px;
+    transition: all 0.3s ease;
+    font-weight: 500;
+    min-width: 40px;
+    text-align: center;
+}
+
+.question-link:hover {
+    background: #3498db;
+    color: white;
+    transform: translateY(-2px);
+}
+
+.question-link.current {
+    background: #3498db;
+    color: white;
+}
+
+/* Selected option styling */
+.option-label.selected {
+    border-color: #3498db;
+    background: #e3f2fd;
+    box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+}
+
+/* Focus states for accessibility */
+.option-label:focus-within {
+    outline: 2px solid #3498db;
+    outline-offset: 2px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .quiz-header {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+    }
+    
+    .option-label {
+        padding: 1rem;
+    }
+    
+    .question-card {
+        padding: 1.5rem;
+    }
+    
+    .navigation-buttons {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .navigation-buttons .btn {
+        width: 100%;
+    }
+    
+    .question-links {
+        gap: 0.3rem;
+    }
+    
+    .question-link {
+        padding: 0.4rem 0.8rem;
+        min-width: 35px;
+        font-size: 0.9rem;
+    }
+    
+    .submission-warning {
+        flex-direction: column;
+        text-align: center;
+    }
+    
+    .warning-icon {
+        align-self: center;
+    }
+}
+
+.timer-banner { background:#1f2937; color:#fff; padding:8px 12px; border-radius:8px; margin-bottom:12px; font-weight:600; display:flex; justify-content:center; }
+.timer-warning { background:#b45309 !important; }
+.timer-danger { background:#7f1d1d !important; }
+.timer-toast { position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background:#b45309; color:#fff; padding:10px 14px; border-radius:8px; z-index:1200; box-shadow:0 8px 20px rgba(0,0,0,0.2); font-weight:700; }
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+	// Option selection styling
+	const optionLabels = document.querySelectorAll('.option-label');
+	optionLabels.forEach(label => { label.addEventListener('click', function() { optionLabels.forEach(l => l.classList.remove('selected')); this.classList.add('selected'); }); });
+
+	// Keyboard submit
+	document.addEventListener('keydown', function(e) { if (e.key === 'Enter') { const submitBtn = document.querySelector('.submit-quiz-btn') || document.querySelector('.next-question-btn'); if (submitBtn) submitBtn.click(); } });
+
+	function showOverlay() { const overlay = document.getElementById('submittingOverlay'); if (overlay) overlay.style.display = 'flex'; }
+	const formMcq = document.getElementById('quiz-form'); if (formMcq) formMcq.addEventListener('submit', function() { showOverlay(); });
+	const formText = document.getElementById('quiz-form-text'); if (formText) formText.addEventListener('submit', function() { showOverlay(); });
+
+	const submitQuizBtn = document.querySelector('.submit-quiz-btn');
+	if (submitQuizBtn) {
+		submitQuizBtn.addEventListener('click', function(e) {
+			const mcqRadio = document.querySelector('input[name="option"]');
+			if (mcqRadio) { const selectedOption = document.querySelector('input[name="option"]:checked'); if (!selectedOption) { e.preventDefault(); alert('Please select an answer before submitting the quiz!'); return false; } }
+			if (!confirm('Are you sure you want to submit the quiz? You cannot change your answers after submission.')) { e.preventDefault(); return false; }
+			this.innerHTML = '⏳ Submitting...'; this.disabled = true; showOverlay();
+		});
+	}
+
+	// Countdown timer with robust 5-minute warning and TTS
+	let remaining = {{ time_remaining|default:0 }}; // seconds
+	const countdownEl = document.getElementById('countdown');
+	const banner = document.getElementById('timerBanner');
+	const bell = document.getElementById('bellSound');
+	const toast = document.getElementById('toast');
+	let warned = false;
+
+	function formatTime(sec) { const m = Math.floor(sec / 60); const s = Math.floor(sec % 60); return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0'); }
+	function showToast() { if (!toast) return; toast.style.display = 'block'; setTimeout(() => { toast.style.display = 'none'; }, 4000); }
+	function notifyTab(message) { if (document.hidden && 'Notification' in window) { if (Notification.permission === 'granted') new Notification(message); else if (Notification.permission !== 'denied') Notification.requestPermission(); } }
+	function speak(text) { try { if ('speechSynthesis' in window) { const u = new SpeechSynthesisUtterance(text); u.lang = 'en-IN'; window.speechSynthesis.speak(u); } } catch(e) {} }
+
+	document.addEventListener('visibilitychange', function() { notifyTab('Quiz in progress - timer is running'); });
+
+	function tick() {
+		if (remaining < 0) remaining = 0;
+		if (countdownEl) countdownEl.textContent = formatTime(remaining);
+		if (remaining <= 60 && banner) banner.classList.add('timer-danger');
+		else if (remaining <= 300 && banner) banner.classList.add('timer-warning');
+		if (!warned && remaining <= 300) { try { if (bell) bell.play(); } catch(e) {} showToast(); notifyTab('Only 5 minutes remaining!'); speak('Five minutes remaining'); warned = true; }
+		if (remaining === 0) { window.location.href = "{% url 'finish_quiz' quiz.pk %}"; return; }
+		remaining -= 1;
+		setTimeout(tick, 1000);
+	}
+	if (remaining > 0) tick();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,396 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Home - Quiz Competition{% endblock %}
+
+{% block content %}
+<div class="home-container">
+	<!-- Hero Section -->
+	<section class="hero-section">
+		<div class="hero-content">
+			<h1 class="hero-title">🎯 Test Your Knowledge</h1>
+			<p class="hero-subtitle">Challenge yourself with exciting quizzes and compete with players worldwide</p>
+			<div class="hero-stats">
+				<div class="stat-item">
+					<span class="stat-number">{% if request.user.is_authenticated %}{{ quizzes.count }}{% else %}0{% endif %}</span>
+					<span class="stat-label">Active Quizzes</span>
+				</div>
+				<div class="stat-item">
+					<span class="stat-number">24/7</span>
+					<span class="stat-label">Available</span>
+				</div>
+			</div>
+			{% if request.user.is_authenticated and request.user.is_staff %}
+			<div style="margin-top: 24px;">
+				<a href="{% url 'create_quiz' %}" class="btn-primary" style="display:inline-block;">➕ Create Quiz</a>
+			</div>
+			{% endif %}
+			{% if not request.user.is_authenticated %}
+			<div style="margin-top: 24px; display:flex; gap:10px; justify-content:center;">
+				<a href="{% url 'login' %}" class="btn-primary" style="display:inline-block;">Login to view quizzes</a>
+				<a href="{% url 'register' %}" class="btn-secondary" style="display:inline-block;">Register</a>
+			</div>
+			{% endif %}
+		</div>
+		<div class="hero-graphic">
+			<div class="floating-icon">📚</div>
+			<div class="floating-icon">🏆</div>
+			<div class="floating-icon">⚡</div>
+		</div>
+	</section>
+
+	{% if not request.user.is_authenticated %}
+	<section class="video-section" style="background:linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%); padding:50px 0;">
+		<div class="container" style="display:flex; gap:20px; align-items:center; flex-wrap:wrap;">
+			<div style="flex:1 1 380px;">
+				<h2 style="margin:0 0 10px 0; color:#0c4a6e;">How quizzes make you better</h2>
+				<p style="color:#075985;">Regular quizzes improve memory, focus, and confidence. Watch this short video.</p>
+			</div>
+			<div style="flex:1 1 380px;">
+				<video controls muted playsinline style="width:100%; border-radius:12px; box-shadow:0 10px 30px rgba(14,165,233,0.2);" poster="https://images.unsplash.com/photo-1517430816045-df4b7de11d1d?w=1200&auto=format&fit=crop&q=60">
+					<source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4">
+					Your browser does not support the video tag.
+				</video>
+			</div>
+		</div>
+	</section>
+	{% endif %}
+
+	<!-- Featured Quizzes Section -->
+	<section class="quizzes-section">
+		<div class="container">
+			<div class="section-header">
+				<h2>Available Quizzes</h2>
+				<p>Choose from our collection of challenging quizzes</p>
+			</div>
+			{% if request.user.is_authenticated and quizzes %}
+				<div class="quiz-grid">
+					{% for quiz in quizzes %}
+					<div class="quiz-card {% if quiz.status == 'ongoing' %}quiz-live{% endif %}">
+						{% if quiz.status == 'ongoing' %}
+						<div class="live-badge">🔴 LIVE</div>
+						{% elif quiz.status == 'scheduled' %}
+						<div class="upcoming-badge">⏰ UPCOMING</div>
+						{% endif %}
+						
+						<div class="quiz-header">
+							<h3 class="quiz-title">{{ quiz.title }}</h3>
+							<span class="quiz-status status-{{ quiz.status }}">{{ quiz.status|title }}</span>
+						</div>
+						
+						<p class="quiz-description">{{ quiz.description|truncatewords:25 }}</p>
+						
+						<div class="quiz-features">
+							<div class="feature">
+								<span class="feature-icon">⏱️</span>
+								<span>{{ quiz.duration }} mins</span>
+							</div>
+							<div class="feature">
+								<span class="feature-icon">❓</span>
+								<span>{{ quiz.get_question_count }} questions</span>
+							</div>
+							<div class="feature">
+								<span class="feature-icon">📊</span>
+								<span>{{ quiz.total_marks }} points</span>
+							</div>
+						</div>
+						
+						<div class="quiz-timing">
+							<div class="timing-item">
+								<strong>Starts:</strong> 
+								<span>{{ quiz.start_time|date:"M d, Y H:i" }}</span>
+							</div>
+							<div class="timing-item">
+								<strong>Ends:</strong> 
+								<span>{{ quiz.end_time|date:"M d, Y H:i" }}</span>
+							</div>
+						</div>
+						
+						<div class="quiz-actions">
+							<a href="{% url 'quiz_detail' quiz.pk %}" class="btn-primary">
+								{% if quiz.status == 'ongoing' %}
+									🚀 Join Now
+								{% else %}
+									View Details
+								{% endif %}
+							</a>
+							{% if quiz.status == 'completed' %}
+							<a href="{% url 'leaderboard' quiz.pk %}" class="btn-secondary">
+								📊 Leaderboard
+							</a>
+							{% endif %}
+						</div>
+					</div>
+					{% endfor %}
+				</div>
+			{% else %}
+				<div class="no-quizzes">
+					<div class="empty-state">
+						<div class="empty-icon">📝</div>
+						<h3>{% if request.user.is_authenticated %}No Quizzes Available{% else %}Please login to view quizzes{% endif %}</h3>
+						<p>{% if request.user.is_authenticated %}Check back later for new exciting quizzes!{% else %}Use the Login button above to get started.{% endif %}</p>
+					</div>
+				</div>
+			{% endif %}
+		</div>
+	</section>
+
+	<!-- Features Section -->
+	<section class="features-section">
+		<div class="container">
+			<div class="section-header">
+				<h2>Why Choose Our Platform?</h2>
+				<p>Experience the best quiz competition platform</p>
+			</div>
+			<div class="features-grid">
+				<div class="feature-card">
+					<div class="feature-icon">⚡</div>
+					<h4>Real-time Competition</h4>
+					<p>Compete with players worldwide in real-time with live leaderboards</p>
+				</div>
+				<div class="feature-card">
+					<div class="feature-icon">🎯</div>
+					<h4>Diverse Categories</h4>
+					<p>Wide range of topics from science to entertainment and more</p>
+				</div>
+				<div class="feature-card">
+					<div class="feature-icon">🏆</div>
+					<h4>Win Rewards</h4>
+					<p>Earn points, badges, and climb the global leaderboard</p>
+				</div>
+				<div class="feature-card">
+					<div class="feature-icon">📱</div>
+					<h4>Mobile Friendly</h4>
+					<p>Play anywhere, anytime on any device with responsive design</p>
+				</div>
+			</div>
+		</div>
+	</section>
+</div>
+
+<style>
+/* Base Styles */
+.home-container { min-height: 100vh; background: linear-gradient(180deg, #f0f9ff 0%, #ffffff 100%); }
+.container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+
+/* Hero Section - New Blue/Teal Gradient */
+.hero-section {
+	background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 50%, #0369a1 100%);
+	color: white;
+	padding: 80px 20px;
+	text-align: center;
+	position: relative;
+	overflow: hidden;
+}
+
+.hero-content {
+	max-width: 800px;
+	margin: 0 auto;
+	position: relative;
+	z-index: 2;
+}
+
+.hero-title {
+	font-size: 3.5rem;
+	font-weight: bold;
+	margin-bottom: 1rem;
+	background: linear-gradient(45deg, #fff, #f0f9ff);
+	-webkit-background-clip: text;
+	-webkit-text-fill-color: transparent;
+	background-clip: text;
+}
+
+.hero-subtitle {
+	font-size: 1.3rem;
+	margin-bottom: 3rem;
+	opacity: 0.95;
+	max-width: 600px;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+.hero-stats {
+	display: flex;
+	justify-content: center;
+	gap: 4rem;
+	margin-top: 3rem;
+}
+
+.stat-item {
+	text-align: center;
+}
+
+.stat-number {
+	display: block;
+	font-size: 2.5rem;
+	font-weight: bold;
+	margin-bottom: 0.5rem;
+}
+
+.stat-label {
+	font-size: 1rem;
+	opacity: 0.9;
+}
+
+.hero-graphic {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	pointer-events: none;
+}
+
+.floating-icon {
+	position: absolute;
+	font-size: 4rem;
+	opacity: 0.15;
+	animation: float 6s ease-in-out infinite;
+}
+
+.floating-icon:nth-child(1) { top: 20%; left: 10%; animation-delay: 0s; }
+.floating-icon:nth-child(2) { top: 60%; right: 10%; animation-delay: 2s; }
+.floating-icon:nth-child(3) { bottom: 20%; left: 50%; animation-delay: 4s; }
+
+@keyframes float {
+	0%, 100% { transform: translateY(0px) rotate(0deg); }
+	50% { transform: translateY(-20px) rotate(5deg); }
+}
+
+/* Section Headers */
+.section-header {
+	text-align: center;
+	margin-bottom: 3rem;
+}
+
+.section-header h2 {
+	font-size: 2.5rem;
+	color: #0c4a6e;
+	margin-bottom: 1rem;
+	font-weight: 800;
+}
+
+.section-header p {
+	font-size: 1.2rem;
+	color: #075985;
+	max-width: 600px;
+	margin: 0 auto;
+}
+
+/* Quizzes Section - Light Blue Background */
+.quizzes-section {
+	padding: 80px 0;
+	background: linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 100%);
+}
+
+.quiz-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+	gap: 2rem;
+	margin-bottom: 3rem;
+}
+
+.quiz-card {
+	background: white;
+	border-radius: 20px;
+	padding: 2rem;
+	box-shadow: 0 10px 30px rgba(14,165,233,0.15);
+	transition: all 0.3s ease;
+	position: relative;
+	border: 2px solid #e0f2fe;
+}
+
+.quiz-card:hover {
+	transform: translateY(-10px);
+	box-shadow: 0 20px 40px rgba(14,165,233,0.25);
+	border-color: #0ea5e9;
+}
+
+.quiz-card.quiz-live {
+	border-left: 5px solid #f97316;
+}
+
+.live-badge, .upcoming-badge {
+	position: absolute;
+	top: -10px;
+	right: 20px;
+	padding: 0.5rem 1rem;
+	border-radius: 20px;
+	font-size: 0.8rem;
+	font-weight: bold;
+	text-transform: uppercase;
+}
+
+.live-badge { background: #f97316; color: white; box-shadow: 0 4px 12px rgba(249,115,22,0.4); }
+.upcoming-badge { background: #fb923c; color: white; box-shadow: 0 4px 12px rgba(251,146,60,0.4); }
+
+.quiz-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
+
+.quiz-title { font-size: 1.4rem; color: #0c4a6e; margin: 0; flex: 1; font-weight: 700; }
+
+.quiz-status { padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.7rem; font-weight: bold; text-transform: uppercase; }
+
+.status-ongoing { background: #dbeafe; color: #1e40af; }
+.status-scheduled { background: #fef3c7; color: #92400e; }
+.status-completed { background: #e5e7eb; color: #374151; }
+
+.quiz-description { color: #64748b; line-height: 1.6; margin-bottom: 1.5rem; }
+
+.quiz-features { display: flex; gap: 1rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+
+.feature { display: flex; align-items: center; gap: 0.5rem; font-size: 0.9rem; color: #475569; }
+
+.feature-icon { font-size: 1.1rem; }
+
+.quiz-timing { background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); padding: 1rem; border-radius: 10px; margin-bottom: 1.5rem; border: 1px solid #bae6fd; }
+
+.timing-item { display: flex; justify-content: space-between; padding: 0.3rem 0; font-size: 0.9rem; }
+
+.timing-item strong { color: #0c4a6e; }
+
+.quiz-actions { display: flex; gap: 1rem; }
+
+.btn-primary, .btn-secondary { flex: 1; padding: 0.8rem 1.5rem; text-align: center; border-radius: 10px; text-decoration: none; font-weight: 600; transition: all 0.3s ease; border: none; cursor: pointer; }
+
+.btn-primary { background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); color: white; box-shadow: 0 4px 15px rgba(14,165,233,0.3); }
+.btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(14,165,233,0.5); }
+
+.btn-secondary { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; box-shadow: 0 4px 15px rgba(249,115,22,0.3); }
+.btn-secondary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(249,115,22,0.5); }
+
+/* Empty State */
+.no-quizzes { text-align: center; padding: 4rem 2rem; }
+
+.empty-state { max-width: 400px; margin: 0 auto; }
+
+.empty-icon { font-size: 4rem; margin-bottom: 1rem; opacity: 0.5; }
+
+/* Features Section - White with Teal accents */
+.features-section { padding: 80px 0; background: white; }
+
+.features-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 2rem; }
+
+.feature-card { text-align: center; padding: 2rem 1.5rem; border-radius: 15px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); transition: all 0.3s ease; border: 2px solid #bae6fd; }
+
+.feature-card:hover { background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%); color: white; transform: translateY(-5px); border-color: #0284c7; box-shadow: 0 10px 30px rgba(14,165,233,0.3); }
+
+.feature-card:hover .feature-icon { transform: scale(1.2); }
+
+.feature-icon { font-size: 3rem; margin-bottom: 1rem; transition: all 0.3s ease; }
+
+.feature-card h4 { font-size: 1.3rem; margin-bottom: 1rem; color: inherit; font-weight: 700; }
+
+.feature-card p { line-height: 1.6; opacity: 0.9; }
+
+/* Responsive Design */
+@media (max-width: 768px) {
+	.hero-title { font-size: 2.5rem; }
+	.hero-stats { gap: 2rem; flex-direction: column; }
+	.quiz-grid { grid-template-columns: 1fr; }
+	.quiz-header { flex-direction: column; gap: 0.5rem; }
+	.quiz-actions { flex-direction: column; }
+	.features-grid { grid-template-columns: 1fr; }
+	.stat-number { font-size: 2rem; }
+}
+</style>
+{% endblock %}

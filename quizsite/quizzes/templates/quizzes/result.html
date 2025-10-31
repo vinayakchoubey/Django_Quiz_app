@@ -1,0 +1,211 @@
+{% extends 'base.html' %}
+
+{% block title %}Quiz Results - {{ quiz.title }}{% endblock %}
+
+{% block content %}
+<div class="container">
+	<div class="result-header">
+		<h2>🎉 Quiz Completed!</h2>
+		<h3>{{ quiz.title }}</h3>
+	</div>
+
+	<div class="result-card">
+		<div class="score-circle">
+			<div class="score-number">{{ score }}</div>
+			<div class="score-label">Points</div>
+		</div>
+		
+		<div class="result-details">
+			<div class="result-item">
+				<span class="label">Correct Answers:</span>
+				<span class="value">{{ correct_answers }}/{{ total_questions }}</span>
+			</div>
+			<div class="result-item">
+				<span class="label">Incorrect Answers:</span>
+				<span class="value">{{ incorrect_answers }}</span>
+			</div>
+			<div class="result-item">
+				<span class="label">Percentage:</span>
+				<span class="value">{{ percentage_score|floatformat:1 }}%</span>
+			</div>
+			<div class="result-item">
+				<span class="label">Time Taken:</span>
+				<span class="value">{{ entry.time_taken|floatformat:0 }} seconds</span>
+			</div>
+		</div>
+	</div>
+
+	<div class="result-actions">
+		<a href="{% url 'leaderboard' quiz.pk %}" class="btn btn-primary">
+			🏆 View Leaderboard
+		</a>
+		<a href="{% url 'home' %}" class="btn btn-success">
+			🏠 Back to Home
+		</a>
+		<a href="{% url 'quiz_detail' quiz.pk %}" class="btn btn-secondary">
+			🔄 Retry Quiz
+		</a>
+	</div>
+
+	<!-- Answer summary -->
+	<div class="answers-summary" style="background:#fff; border-radius:12px; padding:16px; box-shadow:0 6px 16px rgba(0,0,0,0.08);">
+		<h4 style="margin:0 0 10px 0;">Your Answers</h4>
+		{% for item in answers_detail %}
+		<div style="border-top:1px solid #eee; padding:12px 0;">
+			<div style="font-weight:700; color:#374151;">Q{{ item.order }}. {{ item.question }}</div>
+			<div style="margin-top:4px;">
+				<span style="font-weight:600;">Your answer:</span>
+				{% if item.selected_text %}
+					<span {% if item.is_correct %}style="color:#059669; font-weight:700;"{% else %}style="color:#b91c1c; font-weight:700;"{% endif %}>{{ item.selected_text }}</span>
+				{% else %}
+					<span style="color:#6b7280;">Not answered</span>
+				{% endif %}
+			</div>
+			{% if item.qtype == 'mcq' %}
+			<div>
+				<span style="font-weight:600;">Correct answer:</span>
+				{% if item.correct_options %}
+					<span style="color:#059669;">{{ item.correct_options|join:', ' }}</span>
+				{% else %}
+					<span style="color:#6b7280;">Not set</span>
+				{% endif %}
+			</div>
+			{% endif %}
+		</div>
+		{% endfor %}
+	</div>
+
+	<div class="performance-message" style="margin-top:16px;">
+		{% if percentage_score >= 80 %}
+		<div class="message excellent">
+			<h4>🏆 Excellent Work!</h4>
+			<p>You've demonstrated outstanding knowledge in this quiz!</p>
+		</div>
+		{% elif percentage_score >= 60 %}
+		<div class="message good">
+			<h4>👍 Great Job!</h4>
+			<p>Solid performance! Keep up the good work.</p>
+		</div>
+		{% elif percentage_score >= 40 %}
+		<div class="message average">
+			<h4>💪 Good Effort!</h4>
+			<p>You're on the right track. Practice makes perfect!</p>
+		</div>
+		{% else %}
+		<div class="message needs-improvement">
+			<h4>📚 Keep Learning!</h4>
+			<p>Don't worry! Review the material and try again.</p>
+		</div>
+		{% endif %}
+	</div>
+</div>
+
+<!-- Submission success popup -->
+<div id="submitPopup" class="popup-backdrop" style="display:none;">
+	<div class="popup-modal">
+		<div class="popup-header">✅ Test Submitted</div>
+		<p>Your test has been submitted successfully.</p>
+		<p>You will be redirected to the quiz page shortly.</p>
+		<div style="margin-top:12px; display:flex; gap:8px; justify-content:center;">
+			<a id="goNow" href="{% url 'quiz_detail' quiz.pk %}" class="btn btn-primary">Go Now</a>
+			<a href="{% url 'leaderboard' quiz.pk %}" class="btn btn-secondary">Leaderboard</a>
+		</div>
+	</div>
+</div>
+
+<style>
+.result-header {
+	text-align: center;
+	background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+	color: white;
+	padding: 2rem;
+	border-radius: 15px;
+	margin-bottom: 2rem;
+}
+
+.result-header h2 {
+	margin: 0;
+	font-size: 2.5rem;
+}
+
+.result-header h3 {
+	margin: 0.5rem 0 0 0;
+	font-weight: 300;
+}
+
+.result-card {
+	background: white;
+	padding: 2rem;
+	border-radius: 15px;
+	box-shadow: 0 5px 25px rgba(0,0,0,0.1);
+	margin-bottom: 2rem;
+	display: flex;
+	align-items: center;
+	gap: 2rem;
+}
+
+.score-circle {
+	width: 120px;
+	height: 120px;
+	border-radius: 50%;
+	background: linear-gradient(135deg, #27ae60, #2ecc71);
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: center;
+	color: white;
+	flex-shrink: 0;
+}
+
+.score-number {
+	font-size: 2.5rem;
+	font-weight: bold;
+	line-height: 1;
+}
+
+.score-label {
+	font-size: 0.9rem;
+	opacity: 0.9;
+}
+
+.result-details { flex-grow: 1; }
+
+.result-item { display: flex; justify-content: space-between; align-items: center; padding: 0.8rem 0; border-bottom: 1px solid #ecf0f1; }
+.result-item:last-child { border-bottom: none; }
+
+.label { color: #7f8c8d; font-weight: 500; }
+.value { color: #2c3e50; font-weight: bold; font-size: 1.1rem; }
+
+.result-actions { display: flex; gap: 1rem; justify-content: center; margin-bottom: 2rem; }
+.result-actions .btn { padding: 1rem 1.5rem; font-size: 1rem; font-weight: 500; min-width: 160px; }
+
+.performance-message { background: white; padding: 2rem; border-radius: 10px; box-shadow: 0 2px 15px rgba(0,0,0,0.1); text-align: center; }
+.message h4 { margin: 0 0 0.5rem 0; font-size: 1.3rem; }
+.message p { margin: 0; color: #7f8c8d; }
+.message.excellent { border-left: 4px solid #27ae60; }
+.message.good { border-left: 4px solid #3498db; }
+.message.average { border-left: 4px solid #f39c12; }
+.message.needs-improvement { border-left: 4px solid #e74c3c; }
+
+/* Popup styles */
+.popup-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display:flex; align-items:center; justify-content:center; z-index: 1000; }
+.popup-modal { background: #fff; padding: 20px 24px; border-radius: 10px; width: 90%; max-width: 420px; text-align:center; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+.popup-header { font-weight: 700; font-size: 1.2rem; margin-bottom: 8px; }
+
+@media (max-width: 768px) {
+	.result-card { flex-direction: column; text-align: center; }
+	.result-actions { flex-direction: column; }
+	.result-actions .btn { width: 100%; }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+	const popup = document.getElementById('submitPopup');
+	if (popup) {
+		popup.style.display = 'flex';
+		setTimeout(function() { window.location.href = document.getElementById('goNow').href; }, 3500);
+	}
+});
+</script>
+{% endblock %}

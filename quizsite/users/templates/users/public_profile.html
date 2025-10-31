@@ -1,0 +1,165 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ profile_user.username }} - Quiz Competition{% endblock %}
+
+{% block content %}
+<div class="public-profile-container">
+    <!-- Header Section -->
+    <section class="profile-header">
+        <div class="container">
+            <div class="header-content">
+                <div class="avatar-section">
+                    <div class="avatar">
+                        {{ profile_user.username|first|upper }}
+                    </div>
+                    <div class="user-info">
+                        <h1 class="username">{{ profile_user.username }}</h1>
+                        <p class="member-since">Member since {{ profile_user.date_joined|date:"F Y" }}</p>
+                    </div>
+                </div>
+                <div class="stats-overview">
+                    <div class="stat-card">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-content">
+                            <span class="stat-value">{{ total_quizzes }}</span>
+                            <span class="stat-label">Quizzes Taken</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🏆</div>
+                        <div class="stat-content">
+                            <span class="stat-value">{{ total_score }}</span>
+                            <span class="stat-label">Total Points</span>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">⭐</div>
+                        <div class="stat-content">
+                            <span class="stat-value">{{ average_score }}</span>
+                            <span class="stat-label">Avg Score</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Recent Activity -->
+    <section class="profile-content">
+        <div class="container">
+            <div class="section-header">
+                <h2>Recent Activity</h2>
+                <p>{{ profile_user.username }}'s latest quiz performances</p>
+            </div>
+            
+            {% if user_entries %}
+            <div class="activity-grid">
+                {% for entry in user_entries %}
+                <div class="activity-card">
+                    <div class="quiz-header">
+                        <h3>{{ entry.quiz.title }}</h3>
+                        <span class="score-badge">{{ entry.score }} pts</span>
+                    </div>
+                    <div class="quiz-meta">
+                        <span class="meta-item">{{ entry.finished_at|date:"M d, Y" }}</span>
+                        <span class="meta-item">{{ entry.quiz.questions.count }} questions</span>
+                    </div>
+                    <div class="performance-bar">
+                        <div class="performance-fill" style="width: {% widthratio entry.score entry.quiz.total_marks 100 %}%"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <div class="empty-icon">📝</div>
+                <h3>No Public Activity</h3>
+                <p>{{ profile_user.username }} hasn't completed any quizzes yet.</p>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+</div>
+
+<style>
+.public-profile-container {
+    min-height: 100vh;
+    background: #fbfbfd;
+}
+
+/* Reuse styles from profile.html */
+.activity-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.activity-card {
+    background: white;
+    padding: 1.5rem;
+    border-radius: 16px;
+    box-shadow: 0 2px 15px rgba(0,0,0,0.04);
+    border: 1px solid #f0f0f0;
+    transition: all 0.3s ease;
+}
+
+.activity-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+}
+
+.quiz-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.quiz-header h3 {
+    font-size: 1.1rem;
+    color: #1d1d1f;
+    margin: 0;
+    font-weight: 600;
+    flex: 1;
+}
+
+.score-badge {
+    background: #007aff;
+    color: white;
+    padding: 0.3rem 0.8rem;
+    border-radius: 12px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.quiz-meta {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+    color: #86868b;
+}
+
+.performance-bar {
+    height: 6px;
+    background: #f0f0f0;
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.performance-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #007aff, #5856d6);
+    border-radius: 3px;
+    transition: width 0.5s ease;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .activity-grid {
+        grid-template-columns: 1fr;
+    }
+}
+</style>
+{% endblock %}

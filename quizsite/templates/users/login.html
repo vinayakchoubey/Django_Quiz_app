@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 480px;">
+	<div class="auth-card" style="background:#fff; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.12); padding:28px; margin: 30px auto;">
+		<div style="text-align:center; margin-bottom:16px;">
+			<div style="font-size:2rem;">🔒</div>
+			<h2 style="margin:8px 0 0 0; font-weight:800; color:#2c3e50;">Welcome back</h2>
+			<p style="margin:6px 0 0 0; color:#6b7280;">Login to continue</p>
+		</div>
+		<form method="post">
+			{% csrf_token %}
+			<div class="mb-3">
+				<label for="username" class="form-label" style="font-weight:600;">Username</label>
+				<input type="text" name="username" id="username" class="form-control" required>
+			</div>
+			<div class="mb-3">
+				<label for="password" class="form-label" style="font-weight:600;">Password</label>
+				<input type="password" name="password" id="password" class="form-control" required>
+			</div>
+			<button type="submit" class="btn btn-primary w-100" style="padding:10px 14px; font-weight:700;">Login</button>
+		</form>
+		<div style="text-align:center; margin-top:12px; color:#6b7280;">
+			Don't have an account? <a href="{% url 'register' %}">Register</a>
+		</div>
+	</div>
+</div>
+{% endblock %}
