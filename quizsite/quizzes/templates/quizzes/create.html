@@ -8,8 +8,41 @@
 	{% if error %}
 	<div class="alert alert-danger">{{ error }}</div>
 	{% endif %}
-	<form method="post">
+	<form method="post" id="create-quiz-form">
 		{% csrf_token %}
+		<div class="card" style="padding: 16px; margin-bottom: 16px;">
+			<div style="display:flex; justify-content: space-between; align-items:center;">
+				<h3 style="margin:0;">Gemini AI Draft</h3>
+				<button type="button" class="btn btn-primary" id="aiGenerateBtn">
+					<span class="ai-btn-label">✨ Generate with Gemini</span>
+				</button>
+			</div>
+			<p class="text-muted" style="margin: 8px 0 16px;">
+				Set your constraints and let Gemini propose a quiz draft. You can still edit every field before saving.
+			</p>
+			<div class="form-row" style="display:grid; grid-template-columns: repeat(auto-fit,minmax(200px,1fr)); gap: 12px;">
+				<div>
+					<label>Topic / Focus</label>
+					<input type="text" name="ai_topic" class="form-control" placeholder="e.g. Solar System" />
+				</div>
+				<div>
+					<label>Difficulty</label>
+					<select name="ai_difficulty" class="form-control">
+						<option value="easy">Easy</option>
+						<option value="medium" selected>Medium</option>
+						<option value="hard">Hard</option>
+					</select>
+				</div>
+				<div>
+					<label>Desired Questions</label>
+					<input type="number" name="ai_question_count" class="form-control" min="1" value="5" />
+				</div>
+			</div>
+			<div id="aiStatus" class="text-muted small" style="margin-top:10px;">
+				Gemini will populate the form with a full quiz draft based on the details you provide below.
+			</div>
+		</div>
+
 		<div class="card" style="padding: 16px; margin-bottom: 16px;">
 			<h3>Quiz Details</h3>
 			<div class="form-group" style="margin-bottom: 10px;">
@@ -72,7 +105,7 @@
 <script>
 let questionCount = 0;
 
-function addQuestion(prefill) {
+function addQuestion(prefill = null) {
 	questionCount += 1;
 	const qIndex = questionCount;
 	const container = document.getElementById('questions');
@@ -111,9 +144,35 @@ function addQuestion(prefill) {
 		</div>
 	`;
 	container.appendChild(wrapper);
-	// Add two default options for MCQ
-	addOption(qIndex);
-	addOption(qIndex);
+
+	const textField = wrapper.querySelector(`textarea[name="question_text_${qIndex}"]`);
+	const typeField = wrapper.querySelector(`select[name="question_type_${qIndex}"]`);
+	const marksField = wrapper.querySelector(`input[name="question_marks_${qIndex}"]`);
+
+	if (prefill?.text) {
+		textField.value = prefill.text;
+	}
+	if (prefill?.marks) {
+		marksField.value = prefill.marks;
+	}
+	if (prefill?.qtype) {
+		typeField.value = prefill.qtype;
+	}
+
+	const hasPrefillOptions = Array.isArray(prefill?.options) && prefill.options.length > 0;
+
+	if (prefill?.qtype === 'text') {
+		toggleOptions(qIndex, 'text');
+	} else if (hasPrefillOptions) {
+		const list = document.getElementById(`option_list_${qIndex}`);
+		list.innerHTML = '';
+		prefill.options.forEach(option => addOption(qIndex, option));
+	} else {
+		addOption(qIndex);
+		addOption(qIndex);
+	}
+
+	toggleOptions(qIndex, typeField.value);
 }
 
 function removeQuestion(qIndex) {
@@ -123,14 +182,19 @@ function removeQuestion(qIndex) {
 
 function toggleOptions(qIndex, type) {
 	const opt = document.getElementById(`options_${qIndex}`);
+	if (!opt) return;
 	if (type === 'mcq') {
 		opt.style.display = 'block';
+		if (!document.getElementById(`option_list_${qIndex}`).children.length) {
+			addOption(qIndex);
+			addOption(qIndex);
+		}
 	} else {
 		opt.style.display = 'none';
 	}
 }
 
-function addOption(qIndex) {
+function addOption(qIndex, optionPrefill = null) {
 	const list = document.getElementById(`option_list_${qIndex}`);
 	const optIndex = list.children.length + 1;
 	const row = document.createElement('div');
@@ -141,10 +205,110 @@ function addOption(qIndex) {
 		<button type="button" class="btn btn-sm btn-outline-danger" onclick="this.parentElement.remove()">✖</button>
 	`;
 	list.appendChild(row);
+	if (optionPrefill) {
+		const textInput = row.querySelector('input[type="text"]');
+		const radioInput = row.querySelector('input[type="radio"]');
+		textInput.value = optionPrefill.text || '';
+		if (optionPrefill.is_correct) {
+			radioInput.checked = true;
+		}
+	}
+}
+
+function resetQuestions() {
+	const container = document.getElementById('questions');
+	container.innerHTML = '';
+	questionCount = 0;
+}
+
+function getCsrfToken() {
+	const match = document.cookie.split('; ').find(row => row.startsWith('csrftoken='));
+	return match ? match.split('=')[1] : '';
+}
+
+function updateAIStatus(message, isError = false) {
+	const statusEl = document.getElementById('aiStatus');
+	if (!statusEl) return;
+	statusEl.textContent = message;
+	statusEl.classList.toggle('text-danger', isError);
+	statusEl.classList.toggle('text-success', !isError);
+	statusEl.classList.toggle('text-muted', !message);
+}
+
+function applyAiQuiz(data) {
+	const titleInput = document.querySelector('input[name="title"]');
+	const descInput = document.querySelector('textarea[name="description"]');
+	const durationInput = document.querySelector('input[name="duration"]');
+	const maxQuestionsInput = document.querySelector('input[name="max_questions"]');
+
+	if (data.title && titleInput) titleInput.value = data.title;
+	if (data.description && descInput) descInput.value = data.description;
+	if (data.duration && durationInput) durationInput.value = data.duration;
+	if (maxQuestionsInput) {
+		maxQuestionsInput.value = data.max_questions || '';
+	}
+
+	resetQuestions();
+	(data.questions || []).forEach(question => addQuestion(question));
+}
+
+async function handleAIGenerate() {
+	const button = document.getElementById('aiGenerateBtn');
+	const label = button?.querySelector('.ai-btn-label');
+	const topic = document.querySelector('input[name="ai_topic"]').value.trim();
+	const title = document.querySelector('input[name="title"]').value.trim();
+
+	if (!topic && !title) {
+		updateAIStatus('Provide at least a topic or title for Gemini to work with.', true);
+		return;
+	}
+
+	button.disabled = true;
+	if (label) label.textContent = 'Generating...';
+	updateAIStatus('Talking to Gemini, please wait...');
+
+	const payload = {
+		topic,
+		title,
+		description: document.querySelector('textarea[name="description"]').value,
+		difficulty: document.querySelector('select[name="ai_difficulty"]').value,
+		question_count: document.querySelector('input[name="ai_question_count"]').value,
+		duration: document.querySelector('input[name="duration"]').value,
+		max_questions: document.querySelector('input[name="max_questions"]').value,
+		start_time: document.querySelector('input[name="start_time"]').value,
+		end_time: document.querySelector('input[name="end_time"]').value,
+	};
+
+	try {
+		const response = await fetch("{% url 'generate_quiz_ai' %}", {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json',
+				'X-CSRFToken': getCsrfToken(),
+			},
+			body: JSON.stringify(payload),
+		});
+		const data = await response.json();
+		if (!response.ok) {
+			throw new Error(data.error || 'Gemini could not create a quiz.');
+		}
+		applyAiQuiz(data);
+		updateAIStatus('Draft ready! Review and customize before publishing.', false);
+	} catch (error) {
+		console.error(error);
+		updateAIStatus(error.message || 'Something went wrong with Gemini.', true);
+	} finally {
+		button.disabled = false;
+		if (label) label.textContent = '✨ Generate with Gemini';
+	}
 }
 
 document.addEventListener('DOMContentLoaded', () => {
 	addQuestion();
+	const aiButton = document.getElementById('aiGenerateBtn');
+	if (aiButton) {
+		aiButton.addEventListener('click', handleAIGenerate);
+	}
 });
 </script>
 {% endblock %}

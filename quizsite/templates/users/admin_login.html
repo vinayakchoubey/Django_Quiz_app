@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Login{% endblock %}
+
+{% block content %}
+<div class="container" style="max-width: 480px;">
+	<div class="auth-card" style="background:#0f172a; border-radius:16px; box-shadow:0 14px 40px rgba(15,23,42,0.6); padding:28px; margin: 30px auto; color:#e5e7eb;">
+		<div style="text-align:center; margin-bottom:16px;">
+			<div style="font-size:2rem;">🛠️</div>
+			<h2 style="margin:8px 0 0 0; font-weight:800;">Admin Panel</h2>
+			<p style="margin:6px 0 0 0; color:#9ca3af;">Sign in with a staff/admin account</p>
+		</div>
+		<form method="post">
+			{% csrf_token %}
+			<div class="mb-3">
+				<label for="username" class="form-label" style="font-weight:600;">Username</label>
+				<input type="text" name="username" id="username" class="form-control" required>
+			</div>
+			<div class="mb-3">
+				<label for="password" class="form-label" style="font-weight:600;">Password</label>
+				<input type="password" name="password" id="password" class="form-control" required>
+			</div>
+			{% if form.non_field_errors %}
+			<div class="alert alert-danger py-2">
+				{{ form.non_field_errors }}
+			</div>
+			{% endif %}
+			<button type="submit" class="btn btn-primary w-100" style="padding:10px 14px; font-weight:700;">Login as Admin</button>
+		</form>
+		<div style="text-align:center; margin-top:12px; color:#9ca3af;">
+			Not an admin? <a href="{% url 'login' %}">Use the user login</a>
+		</div>
+	</div>
+</div>
+{% endblock %}
+
+

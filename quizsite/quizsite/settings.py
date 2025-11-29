@@ -63,3 +63,6 @@ LOGOUT_REDIRECT_URL = 'home'
 # Timezone settings to ensure form times (local) are interpreted correctly
 TIME_ZONE = 'Asia/Kolkata'
 USE_TZ = True
+
+# External services
+GEMINI_API_KEY = "AIzaSyCJg2Kco0cpLeg7zAZgXOsveQjB-SNqjeY"

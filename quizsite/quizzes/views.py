@@ -1,10 +1,16 @@
-from django.shortcuts import render, get_object_or_404, redirect
-from django.contrib.auth.decorators import login_required
-from django.http import JsonResponse, HttpResponseForbidden
-from django.utils import timezone
-from django.db.models import Sum, Count, Q
+import json
 from datetime import timedelta
-from .models import Quiz, Question, Option, CompetitionEntry, Answer
+
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.db.models import Count, Q, Sum
+from django.http import HttpResponseForbidden, JsonResponse
+from django.shortcuts import get_object_or_404, redirect, render
+from django.utils import timezone
+from django.views.decorators.http import require_POST
+
+from .models import Answer, CompetitionEntry, Option, Question, Quiz, ReattemptRequest
+from .services import AIServiceError, generate_ai_quiz
 
 
 def _session_access_key(quiz_id: int) -> str:
@@ -39,6 +45,28 @@ def quiz_detail(request, pk):
 		user=request.user
 	)
 
+	# Latest re-attempt request (if any)
+	reattempt_request = None
+	if request.user.is_authenticated:
+		reattempt_request = (
+			ReattemptRequest.objects
+			.filter(quiz=quiz, user=request.user)
+			.order_by('-created_at')
+			.first()
+		)
+
+	# If the reattempt has been processed and the user hasn't been notified yet,
+	# show a flash message once and mark it notified so it doesn't repeat.
+	if reattempt_request and not reattempt_request.used and reattempt_request.status != 'pending' and not reattempt_request.user_notified:
+		# Only notify the requesting user (defensive check)
+		if reattempt_request.user == request.user:
+			if reattempt_request.status == 'approved':
+				messages.success(request, 'Your re-attempt request was approved by the admin. You may try the quiz again when it is active.')
+			elif reattempt_request.status == 'rejected':
+				messages.error(request, 'Your re-attempt request was rejected by the admin.')
+			reattempt_request.user_notified = True
+			reattempt_request.save(update_fields=['user_notified'])
+
 	# Access token handling
 	access_ok = False
 	if quiz.access_token:
@@ -55,6 +83,7 @@ def quiz_detail(request, pk):
 		'entry': entry,
 		'has_access': access_ok if quiz.access_token else True,
 		'current_time': timezone.now(),
+		'reattempt_request': reattempt_request,
 	})
 
 
@@ -97,6 +126,21 @@ def start_quiz(request, pk):
 		entry.allowed_finish_at = entry.started_at + timedelta(minutes=quiz.duration)
 		entry.save()
 		print(f"Quiz started. Must finish by: {entry.allowed_finish_at}")
+
+		# If this start corresponds to an approved re-attempt, mark it used
+		try:
+			ra = (
+				ReattemptRequest.objects
+				.filter(quiz=quiz, user=request.user, status='approved', used=False)
+				.order_by('-created_at')
+				.first()
+			)
+			if ra:
+				ra.used = True
+				ra.save(update_fields=['used'])
+		except Exception:
+			# Defensive: don't let notification logic block starting the quiz
+			pass
 	
 	# ✅ Check if time is already up (in case page was reloaded)
 	if entry.is_time_up():
@@ -191,6 +235,7 @@ def quiz_question(request, pk, qnum):
 	# Progress counts
 	total_questions = quiz.get_question_count()
 	answered_count = entry.answers.count()
+	current_answer = entry.answers.filter(question=question).select_related('selected_option').first()
 	
 	return render(request, 'quizzes/question.html', {
 		'quiz': quiz,
@@ -199,6 +244,7 @@ def quiz_question(request, pk, qnum):
 		'time_remaining': int(time_remaining),  # ✅ Pass remaining time in seconds
 		'answered_count': answered_count,
 		'total_questions': total_questions,
+		'current_answer': current_answer,
 	})
 
 
@@ -276,7 +322,16 @@ def finish_quiz(request, pk):
 			'is_correct': is_correct,
 			'marks': q.marks,
 		})
-	
+
+	reattempt_request = None
+	if request.user.is_authenticated:
+		reattempt_request = (
+			ReattemptRequest.objects
+			.filter(quiz=quiz, user=request.user)
+			.order_by('-created_at')
+			.first()
+		)
+
 	return render(request, 'quizzes/result.html', {
 		'quiz': quiz,
 		'entry': entry,
@@ -289,6 +344,7 @@ def finish_quiz(request, pk):
 		'time_taken': entry.time_taken(),
 		'percentage_score': percentage_score,
 		'answers_detail': answers_detail,
+		'reattempt_request': reattempt_request,
 	})
 
 
@@ -444,3 +500,61 @@ def delete_quiz(request, pk):
 		quiz.delete()
 		return redirect('home')
 	return redirect('quiz_detail', pk=pk)
+
+
+@login_required
+@require_POST
+def reset_quiz_attempt(request, pk):
+	"""(Deprecated) Direct reset is now handled via admin-approved flow."""
+	return redirect('quiz_detail', pk=pk)
+
+
+@login_required
+@require_POST
+def request_reattempt(request, pk):
+	"""User can request a single re-attempt which must be approved by an admin."""
+	quiz = get_object_or_404(Quiz, pk=pk)
+	entry = CompetitionEntry.objects.filter(quiz=quiz, user=request.user).first()
+	if not entry or not entry.finished_at:
+		messages.error(request, "You can only request a re-attempt after finishing the quiz.")
+		return redirect('quiz_detail', pk=quiz.pk)
+
+	# Block if already approved or pending
+	existing = (
+		ReattemptRequest.objects
+		.filter(quiz=quiz, user=request.user)
+		.exclude(status='rejected')
+		.exists()
+	)
+	if existing:
+		messages.info(request, "Your re-attempt request is already pending or approved.")
+		return redirect('quiz_detail', pk=quiz.pk)
+
+	reason = request.POST.get('reason', '').strip()
+	ReattemptRequest.objects.create(
+		quiz=quiz,
+		user=request.user,
+		entry=entry,
+		reason=reason,
+	)
+	messages.success(request, "Re-attempt request sent to the admin.")
+	return redirect('quiz_detail', pk=quiz.pk)
+
+
+@login_required
+@require_POST
+def generate_quiz_ai(request):
+	"""Generate quiz draft using Gemini AI based on provided parameters."""
+	if not request.user.is_staff:
+		return HttpResponseForbidden("Not allowed")
+	try:
+		payload = json.loads(request.body.decode('utf-8'))
+	except json.JSONDecodeError:
+		return JsonResponse({'error': 'Invalid JSON payload.'}, status=400)
+
+	try:
+		data = generate_ai_quiz(payload)
+	except AIServiceError as exc:
+		return JsonResponse({'error': str(exc)}, status=400)
+
+	return JsonResponse(data)

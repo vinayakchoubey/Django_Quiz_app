@@ -10,6 +10,22 @@
 		<p class="quiz-description">{{ quiz.description }}</p>
 	</div>
 
+	{# Show re-attempt status banner (if user requested a re-attempt) #}
+	{% if reattempt_request %}
+		<div class="reattempt-banner reattempt-{{ reattempt_request.status }}">
+			{% if reattempt_request.status == 'pending' %}
+				<strong>Re-attempt Requested:</strong> Your request is pending admin review.
+			{% elif reattempt_request.status == 'approved' %}
+				<strong>Re-attempt Approved:</strong> You may attempt this quiz again when it is active.
+			{% elif reattempt_request.status == 'rejected' %}
+				<strong>Re-attempt Rejected:</strong> Your request was declined by the admin.
+			{% endif %}
+			{% if reattempt_request.processed_at %}
+				<span class="muted">(Updated: {{ reattempt_request.processed_at|date:"M d, Y H:i" }})</span>
+			{% endif %}
+		</div>
+	{% endif %}
+
 	<div class="quiz-info-grid">
 		<div class="info-card">
 			<h3>📅 Schedule</h3>
@@ -92,7 +108,7 @@
 	</div>
 	{% else %}
 	<div class="quiz-actions">
-		{% if quiz.is_active %}
+			{% if quiz.is_active %}
 			{% if entry.started_at and not entry.finished_at %}
 				<a href="{% url 'start_quiz' quiz.pk %}" class="btn btn-primary btn-lg">
 					➡️ Continue Quiz
@@ -101,22 +117,53 @@
 				<a href="{% url 'finish_quiz' quiz.pk %}" class="btn btn-success btn-lg">
 					📊 View Results
 				</a>
+				{% if reattempt_request %}
+					{% if reattempt_request.status == 'pending' %}
+						<p class="text-muted mt-2">Re-attempt request is pending admin approval.</p>
+					{% elif reattempt_request.status == 'approved' %}
+						<p class="text-success mt-2">Re-attempt approved. You can start a fresh attempt when the quiz is active.</p>
+					{% elif reattempt_request.status == 'rejected' %}
+						<p class="text-danger mt-2">Your re-attempt request was rejected.</p>
+					{% endif %}
+				{% else %}
+					<form method="post" action="{% url 'request_reattempt' quiz.pk %}" style="margin-top:12px;">
+						{% csrf_token %}
+						<div class="mb-2">
+							<label for="reason" class="form-label">Ask admin for a re-attempt (optional reason)</label>
+							<textarea name="reason" id="reason" rows="2" class="form-control" placeholder="Explain why you need another attempt"></textarea>
+						</div>
+						<button type="submit" class="btn btn-outline-primary btn-lg">
+							🔄 Request Re-attempt
+						</button>
+					</form>
+				{% endif %}
 			{% else %}
 				<a href="{% url 'start_quiz' quiz.pk %}" class="btn btn-primary btn-lg">
 					🚀 Start Quiz
 				</a>
 			{% endif %}
 		{% else %}
-			<button class="btn btn-secondary btn-lg" disabled>
-				⏰ Quiz Not Active
-			</button>
-			<p class="text-muted mt-2">
-				{% if current_time < quiz.start_time %}
-					Starts {{ quiz.start_time|timeuntil }} from now
+			{% if current_time < quiz.start_time %}
+				{# If user has access, show a countdown next to a disabled start button #}
+				{% if has_access %}
+					<div style="display:flex;align-items:center;gap:1rem;justify-content:center;flex-wrap:wrap;">
+						<button class="btn btn-secondary btn-lg" disabled>⏳ Starting Soon</button>
+						<div id="start-countdown" class="countdown" data-start="{{ quiz.start_time|date:'c' }}" data-now="{{ current_time|date:'c' }}">
+							<span class="countdown-label">Starts in</span>
+							<span class="countdown-value">--:--:--</span>
+						</div>
+					</div>
+					<p class="text-muted mt-2">Starts {{ quiz.start_time|timeuntil }} from now</p>
 				{% else %}
-					This quiz has ended
+					<button class="btn btn-secondary btn-lg" disabled>⏰ Quiz Not Active</button>
+					<p class="text-muted mt-2">Starts {{ quiz.start_time|timeuntil }} from now</p>
 				{% endif %}
-			</p>
+			{% else %}
+				<button class="btn btn-secondary btn-lg" disabled>
+					⏰ Quiz Not Active
+				</button>
+				<p class="text-muted mt-2">This quiz has ended</p>
+			{% endif %}
 		{% endif %}
 
 		<div class="secondary-actions">
@@ -159,15 +206,22 @@
 .quiz-header {
 	text-align: center;
 	margin-bottom: 3rem;
-	color: #efe3e3ff;
-	
+	color: #003d7a;
+}
+
+body.dark-theme .quiz-header {
+	color: #f1f5f9;
 }
 
 .quiz-description {
 	font-size: 1.2rem;
-	color: #efe3e3ff;
+	color: #475569;
 	max-width: 800px;
 	margin: 0 auto;
+}
+
+body.dark-theme .quiz-description {
+	color: #cbd5e1;
 }
 
 .quiz-info-grid {
@@ -184,10 +238,20 @@
 	box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 
+body.dark-theme .info-card {
+	background: #1e293b;
+	color: #e2e8f0;
+	box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
+
 .info-card h3 {
 	margin-top: 0;
 	margin-bottom: 1rem;
-	color: #2c3e50;
+	color: #003d7a;
+}
+
+body.dark-theme .info-card h3 {
+	color: #f1f5f9;
 }
 
 .info-item {
@@ -195,6 +259,20 @@
 	border-bottom: 1px solid #eee;
 	display: flex;
 	justify-content: space-between;
+	color: #475569;
+}
+
+body.dark-theme .info-item {
+	border-bottom-color: #334155;
+	color: #cbd5e1;
+}
+
+.info-item strong {
+	color: #003d7a;
+}
+
+body.dark-theme .info-item strong {
+	color: #93c5fd;
 }
 
 .info-item:last-child {
@@ -213,6 +291,11 @@
 .status-badge.ongoing { background: #d1ecf1; color: #0c5460; }
 .status-badge.completed { background: #d4edda; color: #155724; }
 
+body.dark-theme .status-badge.scheduled { background: #78350f; color: #fcd34d; }
+body.dark-theme .status-badge.ongoing { background: #1e3a8a; color: #93c5fd; }
+body.dark-theme .status-badge.completed { background: #065f46; color: #86efac; }
+.status-badge.completed { background: #d4edda; color: #155724; }
+
 .quiz-actions {
 	text-align: center;
 	margin-bottom: 3rem;
@@ -221,6 +304,19 @@
 	border-radius: 10px;
 	box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
+
+.reattempt-banner {
+	margin: 1rem 0 2rem;
+	padding: 1rem 1.25rem;
+	border-radius: 8px;
+	font-weight: 600;
+	color: #0b1220;
+	background: #fff9db;
+	border-left: 4px solid #f6c84c;
+}
+.reattempt-banner.reattempt-approved { background: #e6ffed; border-left-color: #28a745; color: #064d23; }
+.reattempt-banner.reattempt-rejected { background: #ffecec; border-left-color: #dc3545; color: #610b0b; }
+.reattempt-banner .muted { display: inline-block; margin-left: 0.75rem; font-weight: 400; color: #6b7280; }
 
 .btn-lg {
 	padding: 1rem 2rem;
@@ -243,6 +339,30 @@
 	margin-top: 1rem;
 }
 
+.countdown {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.5rem;
+	background: linear-gradient(90deg, #f8fafc, #ffffff);
+	padding: 0.5rem 0.75rem;
+	border-radius: 8px;
+	box-shadow: 0 4px 12px rgba(2,6,23,0.06);
+	font-weight: 700;
+	color: #0f172a;
+}
+
+body.dark-theme .countdown {
+	background: linear-gradient(90deg, #1e293b, #334155);
+	box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+	color: #f1f5f9;
+}
+
+.countdown .countdown-label { font-size: 0.85rem; color: #6b7280; font-weight:600; }
+
+body.dark-theme .countdown .countdown-label { color: #cbd5e1; }
+
+.countdown .countdown-value { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size:1.05rem; }
+
 .stat {
 	background: white;
 	padding: 1.5rem;
@@ -251,17 +371,27 @@
 	box-shadow: 0 2px 10px rgba(0,0,0,0.1);
 }
 
+body.dark-theme .stat {
+	background: #1e293b;
+	color: #e2e8f0;
+	box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
+
 .stat-value {
 	display: block;
 	font-size: 2rem;
 	font-weight: bold;
-	color: #d85d0bff;
+	color: #0ea5e9;
 }
 
 .stat-label {
 	font-size: 0.9rem;
-	color: #0b0b0bff;
+	color: #475569;
 	text-transform: uppercase;
+}
+
+body.dark-theme .stat-label {
+	color: #cbd5e1;
 }
 
 @media (max-width: 768px) {
@@ -283,4 +413,70 @@
 	}
 }
 </style>
+<script>
+/* Countdown to quiz start. Uses server time as baseline to avoid client clock drift. */
+(function(){
+	var el = document.getElementById('start-countdown');
+	if (!el) return;
+	var startIso = el.getAttribute('data-start');
+	var nowIso = el.getAttribute('data-now');
+	var remaining = Date.parse(startIso) - Date.parse(nowIso);
+	var span = el.querySelector('.countdown-value');
+
+	function fmt(ms){
+		if (ms < 0) ms = 0;
+		var total = Math.floor(ms/1000);
+		var hrs = Math.floor(total/3600);
+		var mins = Math.floor((total%3600)/60);
+		var secs = total%60;
+		var hh = String(hrs).padStart(2,'0');
+		var mm = String(mins).padStart(2,'0');
+		var ss = String(secs).padStart(2,'0');
+		return hh+':'+mm+':'+ss;
+	}
+
+	var startUrl = "{% url 'start_quiz' quiz.pk %}";
+
+	function tick(){
+		if (remaining <= 0){
+			span.textContent = '00:00:00';
+			// Replace the disabled button with an enabled Start link in-place
+			try {
+				var parent = el.parentElement; // the flex container
+				if (parent){
+					// create anchor element
+					var a = document.createElement('a');
+					a.className = 'btn btn-primary btn-lg';
+					a.href = startUrl;
+					a.id = 'start-now-link';
+					a.textContent = '\u{1F680} Start Quiz';
+					// replace the first child button with this anchor
+					var btn = parent.querySelector('button');
+					if (btn) parent.replaceChild(a, btn);
+
+					// show a small prompt to confirm immediate start
+					setTimeout(function(){
+						try{
+							var proceed = confirm('The quiz is now live. Start immediately?');
+							if (proceed) window.location.href = startUrl;
+						}catch(e){}
+					}, 250);
+				} else {
+					// fallback: redirect
+					window.location.href = startUrl;
+				}
+			} catch(e){
+				try{ window.location.href = startUrl; }catch(e){}
+			}
+			return;
+		}
+		span.textContent = fmt(remaining);
+		remaining -= 1000;
+	}
+
+	// start ticking; use setInterval but also adjust every second
+	tick();
+	setInterval(tick, 1000);
+})();
+</script>
 {% endblock %}

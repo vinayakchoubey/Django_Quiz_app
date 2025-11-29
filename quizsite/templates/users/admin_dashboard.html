@@ -1,0 +1,322 @@
+{% extends 'base.html' %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<style>
+/* Admin Dashboard Styles */
+.admin-dashboard { padding: 2rem 0; }
+.dashboard-header { margin-bottom: 2.5rem; display: flex; justify-content: space-between; align-items: center; gap: 2rem; flex-wrap: wrap; }
+.dashboard-header > div:first-child { flex: 1; }
+.dashboard-header h1 { font-size: 2.5rem; color: #1e3a8a; margin: 0 0 0.5rem 0; font-weight: 800; }
+body.dark-theme .dashboard-header h1 { color: #93c5fd; }
+.dashboard-header .subtitle { font-size: 1.1rem; color: #64748b; margin: 0; }
+body.dark-theme .dashboard-header .subtitle { color: #cbd5e1; }
+.header-actions { display: flex; gap: 1rem; flex-wrap: wrap; }
+.dashboard-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+@media(max-width: 1024px) { .dashboard-grid { grid-template-columns: 1fr; } }
+.card { background: white; border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+body.dark-theme .card { background: #1e293b; box-shadow: 0 4px 12px rgba(0,0,0,0.3); border: 1px solid #334155; }
+.card h2 { font-size: 1.4rem; color: #1e3a8a; margin: 0 0 0.5rem 0; font-weight: 700; }
+body.dark-theme .card h2 { color: #93c5fd; }
+.card h3 { font-size: 1.1rem; color: #1e3a8a; margin: 0.5rem 0; font-weight: 700; }
+body.dark-theme .card h3 { color: #93c5fd; }
+.card-subtitle { font-size: 0.9rem; color: #64748b; margin: 0 0 1rem 0; }
+body.dark-theme .card-subtitle { color: #cbd5e1; }
+.table { width: 100%; border-collapse: collapse; }
+.table thead { background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); }
+body.dark-theme .table thead { background: linear-gradient(135deg, #1e3a8a 0%, #1e293b 100%); }
+.table th { padding: 1rem; color: #1e3a8a; font-weight: 600; text-align: left; border-bottom: 2px solid #bae6fd; }
+body.dark-theme .table th { color: #93c5fd; border-bottom-color: #3b82f6; }
+.table td { padding: 0.875rem 1rem; border-bottom: 1px solid #e2e8f0; color: #1f2937; }
+body.dark-theme .table td { color: #e2e8f0; border-bottom-color: #334155; }
+.table tbody tr:hover { background: #f8fafc; }
+body.dark-theme .table tbody tr:hover { background: #334155; }
+.text-muted { color: #64748b; }
+body.dark-theme .text-muted { color: #cbd5e1; }
+.text-end { text-align: right; }
+.badge { padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.8rem; font-weight: 600; }
+.bg-warning { background: #fbbf24; color: #92400e; }
+.btn-sm { padding: 0.5rem 1rem; font-size: 0.9rem; }
+.btn-success { background: linear-gradient(135deg, #10b981 0%, #059669 100%); color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; transition: all 0.3s; }
+.btn-success:hover { box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4); transform: translateY(-2px); }
+.btn-outline-danger { background: transparent; color: #ef4444; border: 2px solid #ef4444; padding: 0.4rem 0.9rem; border-radius: 6px; cursor: pointer; transition: all 0.3s; font-weight: 600; }
+.btn-outline-danger:hover { background: #ef4444; color: white; }
+body.dark-theme .btn-outline-danger { color: #f87171; border-color: #f87171; }
+body.dark-theme .btn-outline-danger:hover { background: #f87171; color: #1e293b; }
+.mt-4 { margin-top: 2rem; }
+</style>
+<div class="container admin-dashboard">
+    <div class="dashboard-header">
+        <div>
+            <h1>Admin Dashboard</h1>
+            <p class="subtitle">Manage quizzes and review participant activity</p>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'create_quiz' %}" class="btn btn-primary">➕ Create Quiz</a>
+            <a href="/admin/" class="btn btn-outline-secondary">Django Admin</a>
+        </div>
+    </div>
+
+    <div class="dashboard-grid">
+        <section class="card">
+            <h2>Top Participants</h2>
+            <p class="card-subtitle">Users with the most completed quizzes</p>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th class="text-end">Quizzes Taken</th>
+                            <th class="text-end">Total Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for u in user_stats %}
+                        <tr>
+                            <td>{{ u.user__username }}</td>
+                            <td class="text-end">{{ u.quizzes_taken }}</td>
+                            <td class="text-end">{{ u.total_score|default:"0" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="3" class="text-muted">No quiz attempts yet.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="card">
+            <h2>Quiz Overview</h2>
+            <p class="card-subtitle">Recent quizzes and participation</p>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Quiz</th>
+                            <th>Status</th>
+                            <th class="text-end">Attempts</th>
+                            <th class="text-end">Total Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for q in quiz_stats %}
+                        <tr>
+                            <td>{{ q.title }}</td>
+                            <td>{{ q.status|title }}</td>
+                            <td class="text-end">{{ q.attempts }}</td>
+                            <td class="text-end">{{ q.total_score|default:"0" }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="text-muted">No quizzes created yet.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </div>
+
+    <section class="card mt-4">
+        <h2>Re-attempt Requests</h2>
+        <p class="card-subtitle">Approve or reject user requests to re-attempt quizzes (one extra attempt only)</p>
+        <div class="table-responsive mb-3">
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Quiz</th>
+                        <th>Requested At</th>
+                        <th>Reason</th>
+                        <th class="text-end">Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in pending_reattempts %}
+                    <tr>
+                        <td>{{ r.user.username }}</td>
+                        <td>{{ r.quiz.title }}</td>
+                        <td>{{ r.created_at|date:"M d, Y H:i" }}</td>
+                        <td>{{ r.reason|default:"-" }}</td>
+                        <td class="text-end">
+                            <form method="post" action="{% url 'handle_reattempt_request' r.pk %}" style="display:inline-block; margin-right:4px;">
+                                {% csrf_token %}
+                                <input type="hidden" name="decision" value="approve">
+                                <button type="submit" class="btn btn-sm btn-success">Approve</button>
+                            </form>
+                            <form method="post" action="{% url 'handle_reattempt_request' r.pk %}" style="display:inline-block;">
+                                {% csrf_token %}
+                                <input type="hidden" name="decision" value="reject">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Reject</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-muted">No pending re-attempt requests.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <div style="display:flex; gap:1rem; margin-top:12px;">
+            <div style="flex:1;">
+                <h3 style="margin-top:0.5rem;">Recently Approved</h3>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr><th>User</th><th>Quiz</th><th>Processed At</th><th>Notified</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for r in approved_reattempts %}
+                            <tr>
+                                <td>{{ r.user.username }}</td>
+                                <td>{{ r.quiz.title }}</td>
+                                <td>{{ r.processed_at|date:"M d, Y H:i" }}</td>
+                                <td>{{ r.user_notified|yesno:"Yes,No" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-muted">None</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div style="flex:1;">
+                <h3 style="margin-top:0.5rem;">Recently Rejected</h3>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr><th>User</th><th>Quiz</th><th>Processed At</th><th>Notified</th></tr>
+                        </thead>
+                        <tbody>
+                            {% for r in rejected_reattempts %}
+                            <tr>
+                                <td>{{ r.user.username }}</td>
+                                <td>{{ r.quiz.title }}</td>
+                                <td>{{ r.processed_at|date:"M d, Y H:i" }}</td>
+                                <td>{{ r.user_notified|yesno:"Yes,No" }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr><td colspan="4" class="text-muted">None</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="card mt-4">
+        <h2>Recent Activity</h2>
+        <p class="card-subtitle">Latest quiz joins and completions</p>
+        <div class="table-responsive">
+            <table class="table table-sm align-middle">
+                <thead>
+                    <tr>
+                        <th>User</th>
+                        <th>Quiz</th>
+                        <th>Joined</th>
+                        <th>Finished</th>
+                        <th class="text-end">Score</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for e in recent_entries %}
+                    <tr>
+                        <td>{{ e.user.username }}</td>
+                        <td>{{ e.quiz.title }}</td>
+                        <td>{{ e.joined_at|date:"M d, Y H:i" }}</td>
+                        <td>
+                            {% if e.finished_at %}
+                                {{ e.finished_at|date:"M d, Y H:i" }}
+                            {% else %}
+                                <span class="badge bg-warning text-dark">In progress</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">{{ e.score }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="text-muted">No activity yet.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+
+<style>
+.admin-dashboard {
+    padding-top: 1.5rem;
+    padding-bottom: 2rem;
+}
+
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+}
+
+.dashboard-header h1 {
+    margin: 0;
+    font-weight: 700;
+}
+
+.dashboard-header .subtitle {
+    margin: 0.25rem 0 0;
+    color: #6b7280;
+}
+
+.header-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.card {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 1.25rem 1.5rem;
+    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.06);
+}
+
+.card h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.card-subtitle {
+    margin: 0.3rem 0 0.8rem;
+    color: #9ca3af;
+    font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+    .dashboard-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.75rem;
+    }
+
+    .header-actions {
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+}
+</style>
+{% endblock %}
+
+

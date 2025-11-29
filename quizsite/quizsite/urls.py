@@ -1,15 +1,21 @@
 from django.contrib import admin
-from django.urls import path, include
-from django.contrib.auth import views as auth_views
-from users import views as user_views  # ✅ ADD THIS IMPORT
+from django.urls import include, path
+from users import views as user_views
 
 urlpatterns = [
+    # Django admin (staff-only, uses its own login)
     path('admin/', admin.site.urls),
+
+    # Public quiz site
     path('', include('quizzes.urls')),
-    
-    # ✅ FIXED: Remove the users/ include and define auth URLs directly
-    path('login/', auth_views.LoginView.as_view(template_name='users/login.html'), name='login'),
-    path('logout/', auth_views.LogoutView.as_view(next_page='home'), name='logout'),
-    path('register/', user_views.register, name='register'),  # ✅ ADD THIS LINE
-    # path('users/', include('users.urls')), 
+
+    # Auth for regular users (quiz participants)
+    path('login/', user_views.UserLoginView.as_view(), name='login'),
+    path('logout/', user_views.logout_view, name='logout'),
+    path('register/', user_views.register, name='register'),
+
+    # Separate admin login & in-app dashboard (staff-only)
+    path('admin-login/', user_views.AdminLoginView.as_view(), name='admin_login'),
+    path('admin-dashboard/', user_views.admin_dashboard, name='admin_dashboard'),
+    path('admin-dashboard/reattempt/<int:pk>/', user_views.handle_reattempt_request, name='handle_reattempt_request'),
 ]

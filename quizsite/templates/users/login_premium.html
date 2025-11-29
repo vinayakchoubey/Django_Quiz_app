@@ -1,0 +1,173 @@
+{% extends 'base.html' %}
+
+{% block title %}Login - QuizMaster{% endblock %}
+
+{% block content %}
+<div class="container" style="display: flex; align-items: center; justify-content: center; min-height: calc(100vh - 200px); padding: 2rem 0;">
+    <div style="width: 100%; max-width: 420px;">
+        <!-- Decorative background elements -->
+        <div style="position: absolute; top: 10%; right: 5%; width: 300px; height: 300px; background: radial-gradient(circle, rgba(14, 165, 233, 0.1) 0%, transparent 70%); border-radius: 50%; filter: blur(40px);"></div>
+        <div style="position: absolute; bottom: 20%; left: 5%; width: 250px; height: 250px; background: radial-gradient(circle, rgba(139, 92, 246, 0.1) 0%, transparent 70%); border-radius: 50%; filter: blur(40px);"></div>
+
+        <div class="card" style="position: relative; z-index: 1; animation: slideInUp 0.6s ease-out;">
+            <div class="card-body p-5">
+                <!-- Header -->
+                <div style="text-align: center; margin-bottom: 2rem;">
+                    <div style="font-size: 3rem; margin-bottom: 0.5rem; animation: bounce 2s ease-in-out infinite;">🔐</div>
+                    <h1 style="font-size: 1.75rem; margin-bottom: 0.5rem;">Welcome Back!</h1>
+                    <p style="color: var(--text-muted); margin: 0;">Sign in to your QuizMaster account</p>
+                </div>
+
+                <form method="post" style="animation: fadeIn 0.8s ease-out 0.2s backwards;">
+                    {% csrf_token %}
+
+                    <!-- Username Field -->
+                    <div class="form-group" style="margin-bottom: 1.5rem;">
+                        <label for="username" class="form-label">
+                            <i class="fas fa-user" style="color: var(--primary); margin-right: 0.5rem;"></i>Username
+                        </label>
+                        <input type="text" name="username" id="username" class="form-control" 
+                               placeholder="Enter your username" required 
+                               style="transition: all 0.3s ease; border: 2px solid transparent;">
+                    </div>
+
+                    <!-- Password Field -->
+                    <div class="form-group" style="margin-bottom: 1.5rem;">
+                        <label for="password" class="form-label">
+                            <i class="fas fa-lock" style="color: var(--primary); margin-right: 0.5rem;"></i>Password
+                        </label>
+                        <div style="position: relative;">
+                            <input type="password" name="password" id="password" class="form-control" 
+                                   placeholder="Enter your password" required
+                                   style="transition: all 0.3s ease; border: 2px solid transparent;">
+                            <button type="button" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--primary);" onclick="togglePassword()">
+                                <i class="fas fa-eye" id="toggleIcon"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Error Messages -->
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger" style="margin-bottom: 1.5rem; animation: slideInDown 0.4s ease-out;">
+                        <i class="fas fa-exclamation-circle" style="margin-right: 0.5rem;"></i>
+                        {{ form.non_field_errors }}
+                    </div>
+                    {% endif %}
+
+                    <!-- Login Button -->
+                    <button type="submit" class="btn btn-primary w-100" style="padding: 0.9rem; margin-bottom: 1rem; font-size: 1rem; font-weight: 700;">
+                        <i class="fas fa-sign-in-alt" style="margin-right: 0.5rem;"></i>Sign In
+                    </button>
+                </form>
+
+                <!-- Divider -->
+                <div style="display: flex; align-items: center; margin: 1.5rem 0; gap: 1rem;">
+                    <div style="flex: 1; height: 1px; background: rgba(255, 255, 255, 0.1);"></div>
+                    <span style="color: var(--text-muted); font-size: 0.9rem;">OR</span>
+                    <div style="flex: 1; height: 1px; background: rgba(255, 255, 255, 0.1);"></div>
+                </div>
+
+                <!-- Links -->
+                <div style="text-align: center; font-size: 0.95rem; display: flex; flex-direction: column; gap: 0.75rem;">
+                    <p style="margin: 0; color: var(--text-muted);">
+                        Don't have an account?
+                        <a href="{% url 'register' %}" style="font-weight: 600; color: var(--primary); text-decoration: none; transition: all 0.3s ease;">
+                            Create one <i class="fas fa-arrow-right" style="margin-left: 0.3rem;"></i>
+                        </a>
+                    </p>
+                    <p style="margin: 0; color: var(--text-muted);">
+                        Are you an admin?
+                        <a href="{% url 'admin_login' %}" style="font-weight: 600; color: var(--secondary); text-decoration: none; transition: all 0.3s ease;">
+                            Login here <i class="fas fa-arrow-right" style="margin-left: 0.3rem;"></i>
+                        </a>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer Note -->
+        <p style="text-align: center; color: var(--text-muted); font-size: 0.85rem; margin-top: 1.5rem;">
+            By signing in, you agree to our <a href="#" style="color: var(--primary); text-decoration: none;">Terms of Service</a>
+        </p>
+    </div>
+</div>
+
+<style>
+@keyframes slideInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+#username:focus,
+#password:focus {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+}
+
+a:hover {
+    opacity: 0.8;
+}
+
+@media (max-width: 480px) {
+    .card-body {
+        padding: 2rem 1rem !important;
+    }
+
+    h1 {
+        font-size: 1.5rem !important;
+    }
+}
+</style>
+
+<script>
+function togglePassword() {
+    const input = document.getElementById('password');
+    const icon = document.getElementById('toggleIcon');
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+    }
+}
+</script>
+{% endblock %}

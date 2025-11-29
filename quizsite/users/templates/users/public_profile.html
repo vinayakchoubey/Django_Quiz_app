@@ -5,160 +5,371 @@
 
 {% block content %}
 <div class="public-profile-container">
-    <!-- Header Section -->
-    <section class="profile-header">
-        <div class="container">
-            <div class="header-content">
-                <div class="avatar-section">
-                    <div class="avatar">
-                        {{ profile_user.username|first|upper }}
-                    </div>
-                    <div class="user-info">
-                        <h1 class="username">{{ profile_user.username }}</h1>
-                        <p class="member-since">Member since {{ profile_user.date_joined|date:"F Y" }}</p>
-                    </div>
+    <section class="profile-hero">
+        <div class="glass-panel hero-panel">
+            <div class="hero-left">
+                <div class="avatar-ring">
+                    <span class="avatar-initial">{{ profile_user.username|first|upper }}</span>
                 </div>
-                <div class="stats-overview">
-                    <div class="stat-card">
-                        <div class="stat-icon">📊</div>
-                        <div class="stat-content">
-                            <span class="stat-value">{{ total_quizzes }}</span>
-                            <span class="stat-label">Quizzes Taken</span>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">🏆</div>
-                        <div class="stat-content">
-                            <span class="stat-value">{{ total_score }}</span>
-                            <span class="stat-label">Total Points</span>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon">⭐</div>
-                        <div class="stat-content">
-                            <span class="stat-value">{{ average_score }}</span>
-                            <span class="stat-label">Avg Score</span>
-                        </div>
-                    </div>
+                <div>
+                    <p class="welcome-subtitle">Quiz Challenger</p>
+                    <h1 class="hero-name">{{ profile_user.username }}</h1>
+                    <p class="hero-meta">Member since {{ profile_user.date_joined|date:"F Y" }}</p>
+                </div>
+            </div>
+            <div class="hero-right">
+                <div class="stat-chip">
+                    <span>Quizzes</span>
+                    <strong>{{ total_quizzes }}</strong>
+                </div>
+                <div class="stat-chip">
+                    <span>Total Points</span>
+                    <strong>{{ total_score }}</strong>
+                </div>
+                <div class="stat-chip">
+                    <span>Avg Score</span>
+                    <strong>{{ average_score }}%</strong>
                 </div>
             </div>
         </div>
     </section>
 
-    <!-- Recent Activity -->
-    <section class="profile-content">
-        <div class="container">
-            <div class="section-header">
-                <h2>Recent Activity</h2>
-                <p>{{ profile_user.username }}'s latest quiz performances</p>
+    <section class="insights-grid">
+        <div class="glass-panel insight-card">
+            <div class="insight-icon trend-up">▲</div>
+            <div>
+                <p class="insight-label">Consistency streak</p>
+                <h3>{{ total_quizzes }} quizzes</h3>
+                <p class="insight-footnote">Completed so far</p>
             </div>
-            
-            {% if user_entries %}
-            <div class="activity-grid">
-                {% for entry in user_entries %}
-                <div class="activity-card">
-                    <div class="quiz-header">
-                        <h3>{{ entry.quiz.title }}</h3>
-                        <span class="score-badge">{{ entry.score }} pts</span>
-                    </div>
-                    <div class="quiz-meta">
-                        <span class="meta-item">{{ entry.finished_at|date:"M d, Y" }}</span>
-                        <span class="meta-item">{{ entry.quiz.questions.count }} questions</span>
-                    </div>
-                    <div class="performance-bar">
-                        <div class="performance-fill" style="width: {% widthratio entry.score entry.quiz.total_marks 100 %}%"></div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            {% else %}
-            <div class="empty-state">
-                <div class="empty-icon">📝</div>
-                <h3>No Public Activity</h3>
-                <p>{{ profile_user.username }} hasn't completed any quizzes yet.</p>
-            </div>
-            {% endif %}
         </div>
+        <div class="glass-panel insight-card">
+            <div class="insight-icon trophy">🏆</div>
+            <div>
+                <p class="insight-label">Performance index</p>
+                <h3>{{ average_score }}%</h3>
+                <p class="insight-footnote">Average of all attempts</p>
+            </div>
+        </div>
+        <div class="glass-panel insight-card">
+            <div class="insight-icon star">⭐</div>
+            <div>
+                <p class="insight-label">Points earned</p>
+                <h3>{{ total_score }}</h3>
+                <p class="insight-footnote">Across every quiz</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="profile-content">
+        <div class="section-header">
+            <div>
+                <h2>Recent Activity</h2>
+                <p>Latest quiz performances shared publicly</p>
+            </div>
+            <a href="{% url 'home' %}" class="cta-link">Explore quizzes &rarr;</a>
+        </div>
+
+        {% if user_entries %}
+        <div class="activity-timeline">
+            {% for entry in user_entries %}
+            <article class="timeline-card glass-panel">
+                <div class="timeline-meta">
+                    <span class="timeline-date">{{ entry.finished_at|date:"M d, Y" }}</span>
+                    <span class="timeline-pill">{{ entry.quiz.mode|title }}</span>
+                </div>
+                <h3 class="timeline-title">{{ entry.quiz.title }}</h3>
+                <p class="timeline-subtitle">{{ entry.quiz.questions.count }} questions &middot; {{ entry.quiz.duration }} mins</p>
+                <div class="timeline-progress">
+                    <div class="progress-track">
+                        <div class="progress-fill" style="--progress: {% widthratio entry.score entry.quiz.total_marks 100 %};"></div>
+                    </div>
+                    <span class="progress-label">{{ entry.score }} / {{ entry.quiz.total_marks }} pts</span>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-state glass-panel">
+            <div class="empty-icon">📝</div>
+            <h3>No public attempts yet</h3>
+            <p>{{ profile_user.username }} hasn't completed any quizzes that are shared publicly.</p>
+            <a href="{% url 'home' %}" class="cta-link">Invite them to a quiz &rarr;</a>
+        </div>
+        {% endif %}
     </section>
 </div>
 
 <style>
 .public-profile-container {
     min-height: 100vh;
-    background: #fbfbfd;
+    padding-bottom: 3rem;
+    background: radial-gradient(circle at top, #e0f4ff 0%, #f6fbff 35%, #ffffff 100%);
 }
 
-/* Reuse styles from profile.html */
-.activity-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+.glass-panel {
+    background: rgba(255, 255, 255, 0.85);
+    border-radius: 18px;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.1);
+    backdrop-filter: blur(16px);
+}
+
+.profile-hero {
+    margin: 2rem auto 1.5rem;
+    max-width: 1100px;
+    padding: 0 1rem;
+}
+
+.hero-panel {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 2rem;
+    padding: 2.5rem;
+}
+
+.hero-left {
+    display: flex;
+    align-items: center;
     gap: 1.5rem;
 }
 
-.activity-card {
-    background: white;
-    padding: 1.5rem;
-    border-radius: 16px;
-    box-shadow: 0 2px 15px rgba(0,0,0,0.04);
-    border: 1px solid #f0f0f0;
-    transition: all 0.3s ease;
-}
-
-.activity-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 30px rgba(0,0,0,0.08);
-}
-
-.quiz-header {
+.avatar-ring {
+    width: 84px;
+    height: 84px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #06b6d4, #2563eb);
     display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 1rem;
-}
-
-.quiz-header h3 {
-    font-size: 1.1rem;
-    color: #1d1d1f;
-    margin: 0;
-    font-weight: 600;
-    flex: 1;
-}
-
-.score-badge {
-    background: #007aff;
+    align-items: center;
+    justify-content: center;
     color: white;
-    padding: 0.3rem 0.8rem;
-    border-radius: 12px;
-    font-size: 0.8rem;
-    font-weight: 600;
+    font-size: 2rem;
+    font-weight: 700;
 }
 
-.quiz-meta {
+.hero-right {
     display: flex;
     gap: 1rem;
-    margin-bottom: 1rem;
-    font-size: 0.9rem;
-    color: #86868b;
+    flex-wrap: wrap;
 }
 
-.performance-bar {
-    height: 6px;
-    background: #f0f0f0;
-    border-radius: 3px;
+.stat-chip {
+    min-width: 130px;
+    padding: 1rem 1.2rem;
+    border-radius: 14px;
+    background: rgba(37, 99, 235, 0.08);
+    color: #0f172a;
+}
+
+.stat-chip span {
+    display: block;
+    font-size: 0.85rem;
+    color: #475569;
+}
+
+.stat-chip strong {
+    font-size: 1.6rem;
+    font-weight: 700;
+}
+
+.welcome-subtitle {
+    margin: 0;
+    text-transform: uppercase;
+    letter-spacing: 0.3rem;
+    font-size: 0.75rem;
+    color: #94a3b8;
+}
+
+.hero-name {
+    margin: 0.2rem 0;
+    font-size: 2.4rem;
+    color: #0f172a;
+}
+
+.hero-meta {
+    margin: 0;
+    color: #64748b;
+}
+
+.insights-grid {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 1rem;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.2rem;
+}
+
+.insight-card {
+    display: flex;
+    gap: 1rem;
+    padding: 1.7rem;
+    align-items: center;
+}
+
+.insight-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.4rem;
+    color: white;
+}
+
+.trend-up { background: linear-gradient(135deg, #22d3ee, #0ea5e9); }
+.trophy { background: linear-gradient(135deg, #f97316, #ea580c); }
+.star { background: linear-gradient(135deg, #a855f7, #7c3aed); }
+
+.insight-label {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #475569;
+    letter-spacing: 0.05rem;
+    text-transform: uppercase;
+}
+
+.insight-card h3 {
+    margin: 0.2rem 0;
+    font-size: 1.5rem;
+    color: #0f172a;
+}
+
+.insight-footnote {
+    margin: 0;
+    color: #94a3b8;
+    font-size: 0.85rem;
+}
+
+.profile-content {
+    max-width: 1100px;
+    margin: 2rem auto 0;
+    padding: 0 1rem;
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 1.5rem;
+}
+
+.section-header h2 {
+    margin: 0;
+    font-size: 1.8rem;
+    color: #0f172a;
+}
+
+.section-header p {
+    margin: 0.2rem 0 0;
+    color: #94a3b8;
+}
+
+.cta-link {
+    color: #2563eb;
+    text-decoration: none;
+    font-weight: 600;
+}
+
+.activity-timeline {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.timeline-card {
+    padding: 1.8rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+
+.timeline-meta {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    color: #94a3b8;
+}
+
+.timeline-pill {
+    padding: 0.25rem 0.8rem;
+    border-radius: 999px;
+    background: rgba(99, 102, 241, 0.12);
+    color: #4c1d95;
+    font-weight: 600;
+}
+
+.timeline-title {
+    margin: 0;
+    color: #0f172a;
+    font-size: 1.2rem;
+}
+
+.timeline-subtitle {
+    margin: 0;
+    color: #475569;
+}
+
+.timeline-progress {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    margin-top: 0.5rem;
+}
+
+.progress-track {
+    flex: 1;
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 999px;
     overflow: hidden;
 }
 
-.performance-fill {
+.progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, #007aff, #5856d6);
-    border-radius: 3px;
-    transition: width 0.5s ease;
+    width: calc(var(--progress, 0) * 1%);
+    background: linear-gradient(90deg, #2563eb, #06b6d4);
+    border-radius: 999px;
+    transition: width 0.4s ease;
 }
 
-/* Responsive */
+.progress-label {
+    font-size: 0.85rem;
+    color: #0f172a;
+    font-weight: 600;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 3rem 2rem;
+    margin-top: 1.5rem;
+}
+
+.empty-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+}
+
 @media (max-width: 768px) {
-    .activity-grid {
+    .hero-panel {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .hero-right {
+        width: 100%;
+    }
+
+    .activity-timeline {
         grid-template-columns: 1fr;
+    }
+
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
     }
 }
 </style>

@@ -1,32 +1,58 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Quiz Competition{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{% static 'css/premium.css' %}">
+    <link rel="stylesheet" href="{% static 'css/animations.css' %}">
     <style>
+        :root {
+            --bg-main: #e0f2fe;
+            --bg-main-end: #f0f9ff;
+            --bg-surface: #ffffff;
+            --text-main: #111827;
+            --text-muted: #6b7280;
+            --nav-bg: rgba(255, 255, 255, 0.98);
+            --nav-border: rgba(255, 255, 255, 0.2);
+        }
+
+        body[data-theme="dark"] {
+            --bg-main: #020617;
+            --bg-main-end: #030712;
+            --bg-surface: #0f172a;
+            --text-main: #f1f5f9;
+            --text-muted: #cbd5e1;
+            --nav-bg: rgba(15, 23, 42, 0.98);
+            --nav-border: rgba(51, 65, 85, 0.5);
+        }
+
         body {
-            background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 100%);
+            background: linear-gradient(135deg, var(--bg-main) 0%, var(--bg-main-end) 100%);
+            color: var(--text-main);
             min-height: 100vh;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 0;
         }
+
         .container {
             max-width: 1200px;
         }
-        
+
         /* Enhanced Navbar */
         .navbar {
-            background: rgba(255, 255, 255, 0.98) !important;
+            background: var(--nav-bg) !important;
             backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+            border-bottom: 1px solid var(--nav-border);
             box-shadow: 0 2px 30px rgba(0, 0, 0, 0.1);
             padding: 0.8rem 0;
         }
-        
+
         .navbar-brand {
             font-size: 1.5rem;
             font-weight: 800;
@@ -39,27 +65,168 @@
             gap: 0.5rem;
             text-decoration: none;
         }
-        
-        .nav-user-info { display: flex; align-items: center; gap: 1rem; }
-        .user-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, #0ea5e9, #0284c7); display: flex; align-items: center; justify-content: center; color: white; font-weight: 600; font-size: 0.9rem; box-shadow: 0 4px 15px rgba(14,165,233, 0.3); }
-        .user-welcome { font-weight: 600; color: #2c3e50; font-size: 0.95rem; }
-        .btn-auth { padding: 0.6rem 1.5rem; border-radius: 25px; font-weight: 600; text-decoration: none; transition: all 0.3s ease; display: flex; align-items: center; gap: 0.5rem; border: none; cursor: pointer; }
-        .btn-login { background: linear-gradient(135deg, #0ea5e9, #0284c7); color: white; box-shadow: 0 4px 15px rgba(14,165,233, 0.3); }
-        .btn-login:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(14,165,233, 0.4); color: white; }
-        .btn-register { background: transparent; color: #0ea5e9; border: 2px solid #0ea5e9; }
-        .btn-register:hover { background: #0ea5e9; color: white; transform: translateY(-2px); box-shadow: 0 8px 25px rgba(14,165,233, 0.3); }
-        .btn-logout { background: transparent; color: #e74c3c; border: 2px solid #e74c3c; padding: 0.6rem 1.5rem; border-radius: 25px; font-weight: 600; text-decoration: none; transition: all 0.3s ease; display: flex; align-items: center; gap: 0.5rem; }
-        .btn-logout:hover { background: #e74c3c; color: white; transform: translateY(-2px); box-shadow: 0 8px 25px rgba(231, 76, 60, 0.3); }
-        .nav-link-item { color: #2c3e50; text-decoration: none; font-weight: 500; padding: 0.5rem 1rem; border-radius: 20px; transition: all 0.3s ease; display: flex; align-items: center; gap: 0.5rem; }
-        .nav-link-item:hover { background: rgba(14,165,233, 0.1); color: #0ea5e9; transform: translateY(-1px); text-decoration: none; }
-        @media (max-width: 768px) {
-            .navbar-nav { align-items: center; }
-            .btn-login, .btn-register, .btn-logout { width: 100%; justify-content: center; }
-            .d-flex.gap-2 { flex-direction: column; width: 100%; gap: 0.5rem !important; }
+
+        .nav-user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
         }
-        main { min-height: calc(100vh - 80px); }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 0.9rem;
+            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3);
+        }
+
+        .user-welcome {
+            font-weight: 600;
+            color: #0f172a;
+            font-size: 0.95rem;
+        }
+
+        body[data-theme="dark"] .user-welcome {
+            color: #f1f5f9;
+        }
+
+        .btn-auth {
+            padding: 0.6rem 1.5rem;
+            border-radius: 25px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-login {
+            background: linear-gradient(135deg, #0ea5e9, #0284c7);
+            color: white;
+            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.3);
+        }
+
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(14, 165, 233, 0.4);
+            color: white;
+        }
+
+        .btn-register {
+            background: transparent;
+            color: #0ea5e9;
+            border: 2px solid #0ea5e9;
+        }
+
+        .btn-register:hover {
+            background: #0ea5e9;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(14, 165, 233, 0.3);
+        }
+
+        .btn-logout {
+            background: transparent;
+            color: #e74c3c;
+            border: 2px solid #e74c3c;
+            padding: 0.6rem 1.5rem;
+            border-radius: 25px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-logout:hover {
+            background: #e74c3c;
+            color: white;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(231, 76, 60, 0.3);
+        }
+
+        .nav-link-item {
+            color: var(--text-main);
+            text-decoration: none;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .nav-link-item:hover {
+            background: rgba(14, 165, 233, 0.1);
+            color: #0ea5e9;
+            transform: translateY(-1px);
+            text-decoration: none;
+        }
+
+        @media (max-width: 768px) {
+            .navbar-nav {
+                align-items: center;
+            }
+
+            .btn-login,
+            .btn-register,
+            .btn-logout {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .d-flex.gap-2 {
+                flex-direction: column;
+                width: 100%;
+                gap: 0.5rem !important;
+            }
+        }
+
+        .btn-theme {
+            border-radius: 999px;
+            border: 1px solid rgba(148, 163, 184, 0.6);
+            background: transparent;
+            color: var(--text-main);
+            padding: 0.35rem 0.9rem;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-theme:hover {
+            background: rgba(148, 163, 184, 0.12);
+        }
+
+        body[data-theme="dark"] .card,
+        body[data-theme="dark"] .quiz-card,
+        body[data-theme="dark"] .question-card,
+        body[data-theme="dark"] .result-card,
+        body[data-theme="dark"] .glass-panel,
+        body[data-theme="dark"] .info-card {
+            background-color: #0f172a;
+            color: var(--text-main);
+        }
+
+        main {
+            min-height: calc(100vh - 80px);
+        }
     </style>
 </head>
+
 <body>
     <nav class="navbar navbar-expand-lg navbar-light">
         <div class="container">
@@ -67,11 +234,11 @@
                 <i class="fas fa-brain"></i>
                 QuizMaster
             </a>
-            
+
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            
+
             <div class="collapse navbar-collapse" id="navbarNav">
                 <!-- Right Section -->
                 <div class="navbar-nav ms-auto">
@@ -81,8 +248,19 @@
                         </a>
                         {% if user.is_authenticated %}
                         <div class="nav-user-info">
+                            <button type="button" class="btn-theme d-none d-md-inline-flex" id="themeToggle">
+                                <span id="themeIcon">🌙</span>
+                                <span id="themeLabel">Dark</span>
+                            </button>
                             <div class="user-avatar">{{ user.username|first|upper }}</div>
                             <span class="user-welcome d-none d-md-block">{{ user.username }}</span>
+                            {% if user.is_staff %}
+                            <a href="{% url 'admin_dashboard' %}" class="nav-link-item d-none d-md-inline-flex"
+                                title="Admin dashboard">
+                                <i class="fas fa-tools"></i>
+                                <span>Admin</span>
+                            </a>
+                            {% endif %}
                             <form action="{% url 'logout' %}" method="post" style="display:inline;">
                                 {% csrf_token %}
                                 <button type="submit" class="btn-logout">
@@ -92,7 +270,11 @@
                             </form>
                         </div>
                         {% else %}
-                        <div class="d-flex gap-2">
+                        <div class="d-flex gap-2 align-items-center">
+                            <button type="button" class="btn-theme d-none d-md-inline-flex" id="themeToggle">
+                                <span id="themeIcon">🌙</span>
+                                <span id="themeLabel">Dark</span>
+                            </button>
                             <a href="{% url 'login' %}" class="btn-auth btn-login">
                                 <i class="fas fa-sign-in-alt"></i>
                                 Login
@@ -107,11 +289,50 @@
 
     <main class="py-4">
         <div class="container">
+            {% if messages %}
+            <div class="mb-3">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags|default:'info' }} mb-2" role="alert">
+                    {{ message }}
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
             {% block content %}{% endblock %}
         </div>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        (function () {
+            const stored = localStorage.getItem('theme') || 'light';
+            document.body.setAttribute('data-theme', stored);
+
+            function updateToggle() {
+                const current = document.body.getAttribute('data-theme') || 'light';
+                const iconEls = document.querySelectorAll('#themeIcon');
+                const labelEls = document.querySelectorAll('#themeLabel');
+                iconEls.forEach(el => el.textContent = current === 'dark' ? '☀️' : '🌙');
+                labelEls.forEach(el => el.textContent = current === 'dark' ? 'Light' : 'Dark');
+            }
+
+            function toggleTheme() {
+                const current = document.body.getAttribute('data-theme') || 'light';
+                const next = current === 'dark' ? 'light' : 'dark';
+                document.body.setAttribute('data-theme', next);
+                localStorage.setItem('theme', next);
+                updateToggle();
+            }
+
+            document.addEventListener('DOMContentLoaded', function () {
+                updateToggle();
+                document.querySelectorAll('#themeToggle').forEach(btn => {
+                    btn.addEventListener('click', toggleTheme);
+                });
+            });
+        })();
+    </script>
     {% block extra_scripts %}{% endblock %}
 </body>
+
 </html>

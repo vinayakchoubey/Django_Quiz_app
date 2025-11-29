@@ -32,7 +32,13 @@
 				<div class="options-list">
 					{% for option in question.options.all %}
 					<label class="option-label">
-						<input type="radio" name="option" value="{{ option.id }}" required>
+						<input
+							type="radio"
+							name="option"
+							value="{{ option.id }}"
+							required
+							{% if current_answer and current_answer.selected_option_id == option.id %}checked{% endif %}
+						>
 						<span class="option-text">{{ option.text }}</span>
 					</label>
 					{% endfor %}
@@ -45,15 +51,13 @@
 					<div></div> <!-- Empty div for spacing -->
 					{% endif %}
 					
-					{% if question.order == quiz.questions.count %}
-					<button type="submit" class="btn btn-success submit-quiz-btn">
-						🏁 Submit Quiz
-					</button>
-					{% else %}
-					<button type="submit" class="btn btn-primary next-question-btn">
-						Next Question →
-					</button>
-					{% endif %}
+                    {% if question.order == quiz.questions.count %}
+                    <!-- Submit Quiz button removed for final question; use 'Submit Now' below -->
+                    {% else %}
+                    <button type="submit" class="btn btn-primary next-question-btn">
+                        Next Question →
+                    </button>
+                    {% endif %}
 					<button type="submit" name="submit_quiz" value="1" class="btn btn-outline-success" onclick="return confirm('Submit the quiz now?');">
 						Submit Now
 					</button>
@@ -71,7 +75,7 @@
 				<form method="POST" id="quiz-form-text">
 					{% csrf_token %}
 					<div class="form-group">
-						<textarea name="text_answer" rows="5" placeholder="Type your answer here..." required></textarea>
+						<textarea name="text_answer" rows="5" placeholder="Type your answer here..." required>{% if current_answer %}{{ current_answer.text_answer }}{% endif %}</textarea>
 					</div>
 					<div class="navigation-buttons">
 						{% if question.order > 1 %}
@@ -80,15 +84,13 @@
 						<div></div> <!-- Empty div for spacing -->
 						{% endif %}
 						
-						{% if question.order == quiz.questions.count %}
-						<button type="submit" class="btn btn-success submit-quiz-btn">
-							🏁 Submit Quiz
-						</button>
-						{% else %}
-						<button type="submit" class="btn btn-primary next-question-btn">
-							Next Question →
-						</button>
-						{% endif %}
+                        {% if question.order == quiz.questions.count %}
+                        <!-- Submit Quiz button removed for final question; use 'Submit Now' below -->
+                        {% else %}
+                        <button type="submit" class="btn btn-primary next-question-btn">
+                            Next Question →
+                        </button>
+                        {% endif %}
 						<button type="submit" name="submit_quiz" value="1" class="btn btn-outline-success" onclick="return confirm('Submit the quiz now?');">
 							Submit Now
 						</button>

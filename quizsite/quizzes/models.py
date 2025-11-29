@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -144,7 +146,7 @@ class CompetitionEntry(models.Model):
         if not self.started_at:
             self.started_at = timezone.now()
             # Set allowed finish time based on quiz duration
-            self.allowed_finish_at = self.started_at + timezone.timedelta(minutes=self.quiz.duration)
+            self.allowed_finish_at = self.started_at + timedelta(minutes=self.quiz.duration)
             self.save()
 
     def is_in_progress(self):
@@ -183,3 +185,38 @@ class Answer(models.Model):
 
     def __str__(self):
         return f"Answer by {self.entry.user.username} for {self.question}"
+
+
+class ReattemptRequest(models.Model):
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    )
+
+    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='reattempt_requests')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reattempt_requests')
+    entry = models.ForeignKey(CompetitionEntry, null=True, blank=True, on_delete=models.SET_NULL)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
+    reason = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    processed_at = models.DateTimeField(null=True, blank=True)
+    processed_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='processed_reattempt_requests',
+    )
+    # Whether we've shown an in-site notification to the requesting user
+    user_notified = models.BooleanField(default=False)
+    # Whether the approved re-attempt has been consumed by the user
+    used = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Re-attempt request"
+        verbose_name_plural = "Re-attempt requests"
+
+    def __str__(self):
+        return f"Re-attempt {self.quiz.title} for {self.user.username} ({self.status})"

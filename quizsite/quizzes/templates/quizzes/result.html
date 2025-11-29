@@ -42,9 +42,22 @@
 		<a href="{% url 'home' %}" class="btn btn-success">
 			🏠 Back to Home
 		</a>
-		<a href="{% url 'quiz_detail' quiz.pk %}" class="btn btn-secondary">
-			🔄 Retry Quiz
-		</a>
+		{% if reattempt_request %}
+			{% if reattempt_request.status == 'pending' %}
+				<span class="text-muted ms-2">Re-attempt request pending admin approval.</span>
+			{% elif reattempt_request.status == 'approved' %}
+				<span class="text-success ms-2">Re-attempt approved. Go to the quiz page to start again.</span>
+			{% elif reattempt_request.status == 'rejected' %}
+				<span class="text-danger ms-2">Re-attempt request was rejected.</span>
+			{% endif %}
+		{% else %}
+		<form method="post" action="{% url 'request_reattempt' quiz.pk %}" style="display:inline-block;">
+			{% csrf_token %}
+			<button type="submit" class="btn btn-secondary">
+				🔄 Request Re-attempt
+			</button>
+		</form>
+		{% endif %}
 	</div>
 
 	<!-- Answer summary -->
